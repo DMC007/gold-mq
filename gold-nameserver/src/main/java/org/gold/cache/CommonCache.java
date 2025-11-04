@@ -6,6 +6,7 @@ import org.gold.config.PropertiesLoader;
 /**
  * @author zhaoxun
  * @date 2025/11/4
+ * @description 管理中心【可看作spring容器管理一样】
  */
 public class CommonCache {
 
