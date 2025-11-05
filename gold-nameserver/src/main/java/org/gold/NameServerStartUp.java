@@ -1,6 +1,7 @@
 package org.gold;
 
 import org.gold.cache.CommonCache;
+import org.gold.core.InValidServiceRemoveTask;
 import org.gold.core.NameServerStarter;
 
 import java.io.IOException;
@@ -14,7 +15,14 @@ public class NameServerStartUp {
     private static NameServerStarter nameServerStarter;
     public static void main(String[] args) throws IOException, InterruptedException {
         CommonCache.getPropertiesLoader().loadProperties();
+        initInvalidServerRemoveTask();
         nameServerStarter = new NameServerStarter(CommonCache.getNameserverProperties().getNameserverPort());
         nameServerStarter.startServer();
+    }
+
+    private static void initInvalidServerRemoveTask() {
+        Thread inValidServiceRemoveTask = new Thread(new InValidServiceRemoveTask());
+        inValidServiceRemoveTask.setName("invalid-server-remove-task");
+        inValidServiceRemoveTask.start();
     }
 }

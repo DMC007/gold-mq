@@ -44,6 +44,7 @@ public class RegistryListener implements Listener<RegistryEvent> {
         serviceInstance.setRegistryType(event.getRegistryType());
         serviceInstance.setFirstRegistryTime(System.currentTimeMillis());
         serviceInstance.setAttrs(event.getAttrs());
+        //serviceInstance.setLastHeartBeatTime(System.currentTimeMillis());
         //放入缓存
         CommonCache.getServiceInstanceManager().put(serviceInstance);
         //TODO 单机架构

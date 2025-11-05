@@ -1,5 +1,6 @@
 package org.gold.core;
 
+import com.alibaba.fastjson2.JSON;
 import io.netty.channel.Channel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,6 +25,7 @@ public class InValidServiceRemoveTask implements Runnable {
             try {
                 TimeUnit.SECONDS.sleep(3);
                 Map<String, ServiceInstance> serviceInstanceMap = CommonCache.getServiceInstanceManager().getServiceInstanceMap();
+                log.info("serviceInstanceMap size:{}", serviceInstanceMap.size());
                 long currentTime = System.currentTimeMillis();
                 Iterator<String> iterator = serviceInstanceMap.keySet().iterator();
                 while (iterator.hasNext()) {
@@ -34,8 +36,10 @@ public class InValidServiceRemoveTask implements Runnable {
                         continue;
                     }
                     if (currentTime - serviceInstance.getLastHeartBeatTime() > 3000 * 3) {
+                        log.info("remove invalid serviceInstance:{}", JSON.toJSONString(serviceInstance));
                         Channel channel = serviceInstance.getChannel();
                         if (channel != null && channel.isActive()) {
+                            log.info("close channel:{}", channel);
                             channel.close();
                         }
                         iterator.remove();

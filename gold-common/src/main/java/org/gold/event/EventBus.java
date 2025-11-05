@@ -51,7 +51,7 @@ public class EventBus {
                         log.error("uncaughtException:{}", e.getMessage(), e);
                     }
                 });
-                thread.setName(taskName + UUID.randomUUID().toString());
+                thread.setName(taskName + UUID.randomUUID());
                 return thread;
             });
 

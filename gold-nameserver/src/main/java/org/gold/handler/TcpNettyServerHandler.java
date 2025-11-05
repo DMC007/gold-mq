@@ -5,6 +5,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.internal.StringUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
 import org.gold.dto.ServiceRegistryReqDTO;
 import org.gold.enums.NameServerEventCode;
@@ -21,6 +23,8 @@ import java.net.InetSocketAddress;
 @ChannelHandler.Sharable
 public class TcpNettyServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
 
+    private static final Logger log = LogManager.getLogger(TcpNettyServerHandler.class);
+
     private EventBus eventBus;
 
     public TcpNettyServerHandler(EventBus eventBus) {
@@ -30,6 +34,7 @@ public class TcpNettyServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, TcpMsg msg) throws Exception {
+        log.info("receive msg: {}", msg);
         int code = msg.getCode();
         byte[] body = msg.getBody();
         Event event = null;

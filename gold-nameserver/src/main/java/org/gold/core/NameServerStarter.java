@@ -15,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsgDecoder;
 import org.gold.coder.TcpMsgEncoder;
 import org.gold.constants.TcpConstants;
+import org.gold.event.EventBus;
 import org.gold.handler.TcpNettyServerHandler;
 
 /**
@@ -45,7 +46,7 @@ public class NameServerStarter {
                         channel.pipeline().addLast(new DelimiterBasedFrameDecoder(1024 * 8, byteBuf));
                         channel.pipeline().addLast(new TcpMsgDecoder());
                         channel.pipeline().addLast(new TcpMsgEncoder());
-                        channel.pipeline().addLast(new TcpNettyServerHandler());
+                        channel.pipeline().addLast(new TcpNettyServerHandler(new EventBus("broker-connection-")));
                     }
                 });
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
