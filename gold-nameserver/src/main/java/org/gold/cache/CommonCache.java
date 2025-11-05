@@ -2,6 +2,7 @@ package org.gold.cache;
 
 import org.gold.config.NameserverProperties;
 import org.gold.config.PropertiesLoader;
+import org.gold.store.ServiceInstanceManager;
 
 /**
  * @author zhaoxun
@@ -12,6 +13,7 @@ public class CommonCache {
 
     private static PropertiesLoader propertiesLoader = new PropertiesLoader();
     private static NameserverProperties nameserverProperties = new NameserverProperties();
+    private static ServiceInstanceManager serviceInstanceManager = new ServiceInstanceManager();
 
     public static NameserverProperties getNameserverProperties() {
         return nameserverProperties;
@@ -27,5 +29,13 @@ public class CommonCache {
 
     public static void setPropertiesLoader(PropertiesLoader propertiesLoader) {
         CommonCache.propertiesLoader = propertiesLoader;
+    }
+
+    public static ServiceInstanceManager getServiceInstanceManager() {
+        return serviceInstanceManager;
+    }
+
+    public static void setServiceInstanceManager(ServiceInstanceManager serviceInstanceManager) {
+        CommonCache.serviceInstanceManager = serviceInstanceManager;
     }
 }

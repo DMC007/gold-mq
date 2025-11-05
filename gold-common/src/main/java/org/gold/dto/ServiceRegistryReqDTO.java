@@ -1,4 +1,4 @@
-package org.gold.event.model;
+package org.gold.dto;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -6,9 +6,10 @@ import java.util.Map;
 /**
  * @author zhaoxun
  * @date 2025/11/5
- * @description 注册事件
+ * @description 服务注册请求
  */
-public class RegistryEvent extends Event {
+public class ServiceRegistryReqDTO extends BaseNameServerRemoteDTO {
+
     /**
      * 节点的注册类型，方便统计数据使用
      *

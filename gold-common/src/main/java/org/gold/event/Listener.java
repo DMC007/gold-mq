@@ -13,5 +13,5 @@ public interface Listener<E extends Event> {
      *
      * @param event 事件
      */
-    void onReceive(E event);
+    void onReceive(E event) throws Exception;
 }
