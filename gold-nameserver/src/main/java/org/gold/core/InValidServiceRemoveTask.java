@@ -37,12 +37,12 @@ public class InValidServiceRemoveTask implements Runnable {
                     }
                     if (currentTime - serviceInstance.getLastHeartBeatTime() > 3000 * 3) {
                         log.info("remove invalid serviceInstance:{}", JSON.toJSONString(serviceInstance));
+                        iterator.remove();
                         Channel channel = serviceInstance.getChannel();
                         if (channel != null && channel.isActive()) {
                             log.info("close channel:{}", channel);
                             channel.close();
                         }
-                        iterator.remove();
                     }
                 }
             } catch (Exception e) {
