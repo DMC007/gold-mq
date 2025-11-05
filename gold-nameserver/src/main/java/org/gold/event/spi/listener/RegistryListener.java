@@ -38,6 +38,7 @@ public class RegistryListener implements Listener<RegistryEvent> {
         log.info("RegistryEvent:{}", JSON.toJSONString(event));
         ctx.channel().attr(AttributeKey.valueOf("reqId")).set(event.getIp() + ":" + event.getPort());
         ServiceInstance serviceInstance = new ServiceInstance();
+        serviceInstance.setChannel(ctx.channel());
         serviceInstance.setIp(event.getIp());
         serviceInstance.setPort(event.getPort());
         serviceInstance.setRegistryType(event.getRegistryType());

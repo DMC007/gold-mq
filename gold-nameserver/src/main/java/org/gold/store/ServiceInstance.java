@@ -1,16 +1,22 @@
 package org.gold.store;
 
+import io.netty.channel.Channel;
+
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * @author zhaoxun
- * @date 2025/11/5
  */
 public class ServiceInstance {
 
     /**
+     * 注册的channel，主要方便用于当心跳检测下游服务不可用时候，能关闭对应的长连接通道
+     */
+    private Channel channel;
+    /**
      * 注册类型
+     *
      * @see org.gold.enums.RegistryTypeEnum
      */
     private String registryType;
@@ -18,7 +24,15 @@ public class ServiceInstance {
     private Integer port;
     private Long firstRegistryTime;
     private Long lastHeartBeatTime;
-    private Map<String,Object> attrs = new HashMap<>();
+    private Map<String, Object> attrs = new HashMap<>();
+
+    public Channel getChannel() {
+        return channel;
+    }
+
+    public void setChannel(Channel channel) {
+        this.channel = channel;
+    }
 
     public String getRegistryType() {
         return registryType;
