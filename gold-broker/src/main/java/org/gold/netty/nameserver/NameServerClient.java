@@ -68,7 +68,11 @@ public class NameServerClient {
                 log.info("register success, start the heartbeat mission..");
                 //启动心跳任务
                 CommonCache.getHeartBeatTaskManager().startHeartBeatTask();
+            } else if (NameServerResponseCode.ERROR_USER_OR_PASSWORD.getCode() == code) {
+                log.error("register error, user or password error");
+                throw new RuntimeException("register error, user or password error");
             }
+            log.info("register response: {}", JSON.toJSONString(responseTcpMsg));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
