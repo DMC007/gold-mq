@@ -64,9 +64,10 @@ public class NameServerClient {
             TcpMsg tcpMsg = new TcpMsg(NameServerEventCode.REGISTRY.getCode(), body);
             TcpMsg responseTcpMsg = nameServerNettyRemoteClient.sendSynMsg(tcpMsg, reqDTO.getMsgId());
             int code = responseTcpMsg.getCode();
-            if(NameServerResponseCode.REGISTRY_SUCCESS.getCode() == code) {
+            if (NameServerResponseCode.REGISTRY_SUCCESS.getCode() == code) {
                 log.info("register success, start the heartbeat mission..");
-                //TODO 启动心跳任务
+                //启动心跳任务
+                CommonCache.getHeartBeatTaskManager().startHeartBeatTask();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
