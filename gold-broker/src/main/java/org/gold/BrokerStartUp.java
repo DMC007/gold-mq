@@ -25,7 +25,6 @@ public class BrokerStartUp {
     private static ConsumerQueueAppendHandler consumerQueueAppendHandler;
     private static ConsumerQueueConsumeHandler consumerQueueConsumeHandler;
 
-
     /**
      * 启动
      *
@@ -34,11 +33,6 @@ public class BrokerStartUp {
     public static void main(String[] args) throws IOException {
         initProperties();
         initNameServerClient();
-    }
-
-    private static void initNameServerClient() {
-        CommonCache.getNameServerClient().initConnection();
-        CommonCache.getNameServerClient().sendRegistryMsg();
     }
 
     /**
@@ -69,5 +63,12 @@ public class BrokerStartUp {
         //TODO 时间轮相关的后期开发
     }
 
+    /**
+     * 初始化名称服务客户端
+     */
+    private static void initNameServerClient() {
+        CommonCache.getNameServerClient().initConnection();
+        CommonCache.getNameServerClient().sendRegistryMsg();
+    }
 
 }
