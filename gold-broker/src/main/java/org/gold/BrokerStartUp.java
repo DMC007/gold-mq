@@ -33,7 +33,12 @@ public class BrokerStartUp {
      */
     public static void main(String[] args) throws IOException {
         initProperties();
+        initNameServerClient();
+    }
 
+    private static void initNameServerClient() {
+        CommonCache.getNameServerClient().initConnection();
+        CommonCache.getNameServerClient().sendRegistryMsg();
     }
 
     /**

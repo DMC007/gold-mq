@@ -4,6 +4,7 @@ import org.gold.config.GlobalProperties;
 import org.gold.core.*;
 import org.gold.model.ConsumerQueueOffsetModel;
 import org.gold.model.GoldMqTopicModel;
+import org.gold.netty.nameserver.NameServerClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +27,8 @@ public class CommonCache {
     private static CommitLogAppendHandler commitLogAppendHandler;
     private static ConsumerQueueAppendHandler consumerQueueAppendHandler;
     private static ConsumerQueueConsumeHandler consumerQueueConsumeHandler;
+
+    private static NameServerClient nameServerClient = new NameServerClient();
 
     public static GlobalProperties getGlobalProperties() {
         return globalProperties;
@@ -93,5 +96,13 @@ public class CommonCache {
 
     public static void setConsumerQueueConsumeHandler(ConsumerQueueConsumeHandler consumerQueueConsumeHandler) {
         CommonCache.consumerQueueConsumeHandler = consumerQueueConsumeHandler;
+    }
+
+    public static NameServerClient getNameServerClient() {
+        return nameServerClient;
+    }
+
+    public static void setNameServerClient(NameServerClient nameServerClient) {
+        CommonCache.nameServerClient = nameServerClient;
     }
 }

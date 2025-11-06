@@ -8,10 +8,12 @@ import io.netty.util.internal.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
+import org.gold.dto.HeartBeatDTO;
 import org.gold.dto.ServiceRegistryReqDTO;
 import org.gold.enums.NameServerEventCode;
 import org.gold.event.EventBus;
 import org.gold.event.model.Event;
+import org.gold.event.model.HeartBeatEvent;
 import org.gold.event.model.RegistryEvent;
 
 import java.net.InetSocketAddress;
@@ -57,11 +59,21 @@ public class TcpNettyServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             event = registryEvent;
         } else if (NameServerEventCode.UN_REGISTRY.getCode() == code) {
         } else if (NameServerEventCode.HEART_BEAT.getCode() == code) {
+            HeartBeatDTO heartBeatDTO = JSON.parseObject(body, HeartBeatDTO.class);
+            HeartBeatEvent heartBeatEvent = new HeartBeatEvent();
+            heartBeatEvent.setMsgId(heartBeatDTO.getMsgId());
+            event = heartBeatEvent;
         } else {
             ctx.close();
             throw new RuntimeException("unsupported events");
         }
         event.setChannelHandlerContext(ctx);
         eventBus.publish(event);
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        log.info("channel inactive");
+        super.channelInactive(ctx);
     }
 }
