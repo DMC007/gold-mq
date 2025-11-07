@@ -52,6 +52,7 @@ public class NameServerNettyRemoteClient {
                     }
                 });
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("Shutdown hook");
             eventLoopGroup.shutdownGracefully();
         }));
         ChannelFuture channelFuture = null;

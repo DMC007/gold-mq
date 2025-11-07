@@ -15,6 +15,7 @@ import org.gold.event.EventBus;
 import org.gold.event.model.Event;
 import org.gold.event.model.HeartBeatEvent;
 import org.gold.event.model.RegistryEvent;
+import org.gold.event.model.UnRegistryEvent;
 
 import java.net.InetSocketAddress;
 
@@ -57,7 +58,6 @@ public class TcpNettyServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
                 registryEvent.setPort(serviceRegistryReqDTO.getPort());
             }
             event = registryEvent;
-        } else if (NameServerEventCode.UN_REGISTRY.getCode() == code) {
         } else if (NameServerEventCode.HEART_BEAT.getCode() == code) {
             HeartBeatDTO heartBeatDTO = JSON.parseObject(body, HeartBeatDTO.class);
             HeartBeatEvent heartBeatEvent = new HeartBeatEvent();
@@ -74,6 +74,8 @@ public class TcpNettyServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         log.info("channel inactive");
-        super.channelInactive(ctx);
+        UnRegistryEvent unRegistryEvent = new UnRegistryEvent();
+        unRegistryEvent.setChannelHandlerContext(ctx);
+        eventBus.publish(unRegistryEvent);
     }
 }

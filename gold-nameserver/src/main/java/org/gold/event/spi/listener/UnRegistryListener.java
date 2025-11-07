@@ -34,11 +34,9 @@ public class UnRegistryListener implements Listener<UnRegistryEvent> {
         String reqIdStr = reqId.toString();
         //移除需要下线的节点信息
         CommonCache.getServiceInstanceManager().remove(reqIdStr);
-        //发送正常下线操作给客户端
-        TcpMsg tcpMsg = new TcpMsg(NameServerResponseCode.UN_REGISTRY_SERVICE.getCode(),
-                NameServerResponseCode.UN_REGISTRY_SERVICE.getDesc().getBytes());
-        ctx.writeAndFlush(tcpMsg);
         //关闭连接
-        ctx.close();
+        if (ctx.channel().isActive()) {
+            ctx.close();
+        }
     }
 }

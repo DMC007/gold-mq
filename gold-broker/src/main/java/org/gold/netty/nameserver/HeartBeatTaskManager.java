@@ -26,6 +26,7 @@ public class HeartBeatTaskManager {
     private AtomicInteger startMark = new AtomicInteger(0);
 
     public void startHeartBeatTask() {
+        //心跳任务我们只需开启一次即可，这是为了放在网络波动的时候可能导致注册消息被传递了2次
         if (startMark.getAndIncrement() > 1) {
             return;
         }
