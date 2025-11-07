@@ -9,6 +9,7 @@ import org.gold.core.ConsumerQueueAppendHandler;
 import org.gold.core.ConsumerQueueConsumeHandler;
 import org.gold.enums.BrokerClusterModeEnum;
 import org.gold.model.GoldMqTopicModel;
+import org.gold.nett.broker.BrokerServer;
 import org.gold.slave.SlaveSyncService;
 
 import java.io.IOException;
@@ -33,9 +34,10 @@ public class BrokerStartUp {
      *
      * @param args 参数
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         initProperties();
         initNameServerClient();
+        initBrokerServer();
     }
 
     /**
@@ -88,6 +90,11 @@ public class BrokerStartUp {
                 slaveSyncService.sendStartSyncMsg();
             }
         }
+    }
+
+    private static void initBrokerServer() throws InterruptedException {
+        BrokerServer brokerServer = new BrokerServer(CommonCache.getGlobalProperties().getBrokerPort());
+        brokerServer.startBrokerServer();
     }
 
 }

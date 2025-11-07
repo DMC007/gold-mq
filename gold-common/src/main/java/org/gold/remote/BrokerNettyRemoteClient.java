@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author zhaoxun
  * @date 2025/11/7
- * @description 对broker进行远程连接的客户端, 可以用作集群架构主从之间的通信
+ * @description 对broker进行远程连接的客户端
  */
 public class BrokerNettyRemoteClient {
 
@@ -38,7 +38,7 @@ public class BrokerNettyRemoteClient {
     private Bootstrap bootstrap = new Bootstrap();
     private Channel channel;
 
-    public void buildConnection() {
+    public void buildConnection(SimpleChannelInboundHandler<TcpMsg> simpleChannelInboundHandler) {
         bootstrap.group(eventLoopGroup)
                 .channel(NioSocketChannel.class)
                 .handler(new ChannelInitializer<Channel>() {
@@ -48,7 +48,8 @@ public class BrokerNettyRemoteClient {
                         ch.pipeline().addLast(new DelimiterBasedFrameDecoder(8 * 1024, delimiter));
                         ch.pipeline().addLast(new TcpMsgEncoder());
                         ch.pipeline().addLast(new TcpMsgDecoder());
-                        //TODO 业务处理handler
+                        //业务处理handler
+                        ch.pipeline().addLast(simpleChannelInboundHandler);
                     }
                 });
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -96,5 +97,9 @@ public class BrokerNettyRemoteClient {
             log.error("send sync msg error", e);
             throw new RuntimeException(e);
         }
+    }
+
+    public void sendAsyncMsg(TcpMsg tcpMsg) {
+        channel.writeAndFlush(tcpMsg);
     }
 }

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
 import org.gold.dto.StartSyncReqDTO;
 import org.gold.enums.BrokerEventCode;
+import org.gold.event.EventBus;
 import org.gold.remote.BrokerNettyRemoteClient;
 
 import java.util.UUID;
@@ -27,7 +28,7 @@ public class SlaveSyncService {
         Integer port = Integer.parseInt(addressArr[1]);
         try {
             brokerNettyRemoteClient = new BrokerNettyRemoteClient(ip, port);
-            brokerNettyRemoteClient.buildConnection();
+            brokerNettyRemoteClient.buildConnection(new SlaveSyncServerHandler(new EventBus("slave-sync-eventbus")));
             return true;
         } catch (Exception e) {
             log.error("connect master broker error", e);
