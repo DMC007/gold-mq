@@ -64,7 +64,7 @@ public class NameServerClient {
             byte[] body = JSON.toJSONBytes(reqDTO);
             //发送注册事件消息给nameserver
             TcpMsg tcpMsg = new TcpMsg(NameServerEventCode.REGISTRY.getCode(), body);
-            TcpMsg responseTcpMsg = nameServerNettyRemoteClient.sendSynMsg(tcpMsg, reqDTO.getMsgId());
+            TcpMsg responseTcpMsg = nameServerNettyRemoteClient.sendSyncMsg(tcpMsg, reqDTO.getMsgId());
             int code = responseTcpMsg.getCode();
             if (NameServerResponseCode.REGISTRY_SUCCESS.getCode() == code) {
                 log.info("register success, start the heartbeat mission..");
@@ -96,7 +96,7 @@ public class NameServerClient {
         reqDTO.setBrokerClusterGroup(CommonCache.getGlobalProperties().getBrokerClusterGroup());
         reqDTO.setMsgId(UUID.randomUUID().toString());
         TcpMsg tcpMsg = new TcpMsg(NameServerEventCode.PULL_BROKER_IP_LIST.getCode(), JSON.toJSONBytes(reqDTO));
-        TcpMsg responseTcpMsg = nameServerNettyRemoteClient.sendSynMsg(tcpMsg, reqDTO.getMsgId());
+        TcpMsg responseTcpMsg = nameServerNettyRemoteClient.sendSyncMsg(tcpMsg, reqDTO.getMsgId());
         PullBrokerIpRespDTO pullBrokerIpRespDTO = JSON.parseObject(responseTcpMsg.getBody(), PullBrokerIpRespDTO.class);
         //这里采用单master模式，因此只返回第一个
         List<String> masterAddressList = pullBrokerIpRespDTO.getMasterAddressList();

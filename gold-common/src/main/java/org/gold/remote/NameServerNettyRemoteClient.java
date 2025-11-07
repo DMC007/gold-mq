@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
 import org.gold.coder.TcpMsgDecoder;
 import org.gold.coder.TcpMsgEncoder;
+import org.gold.common.NameServerSyncFutureManager;
 import org.gold.constants.TcpConstants;
 
 /**
@@ -82,8 +83,16 @@ public class NameServerNettyRemoteClient {
         }
     }
 
-    public TcpMsg sendSynMsg(TcpMsg tcpMsg, String msgId) {
+    public TcpMsg sendSyncMsg(TcpMsg tcpMsg, String msgId) {
+        NameServerSyncFuture nameServerSyncFuture = new NameServerSyncFuture();
+        NameServerSyncFutureManager.putSyncFuture(msgId, nameServerSyncFuture);
+        //发送消息是异步操作，一定要防止manager后面，确保响应的时候能取出值
         channel.writeAndFlush(tcpMsg);
-        return null;
+        try {
+            nameServerSyncFuture.get();
+            return (TcpMsg) nameServerSyncFuture.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

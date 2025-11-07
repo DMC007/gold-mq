@@ -46,7 +46,7 @@ public class HeartBeatTaskManager {
                     HeartBeatDTO heartBeatDTO = new HeartBeatDTO();
                     heartBeatDTO.setMsgId(UUID.randomUUID().toString());
                     TcpMsg tcpMsg = new TcpMsg(NameServerEventCode.HEART_BEAT.getCode(), JSON.toJSONBytes(heartBeatDTO));
-                    TcpMsg tcpMsgRes = nameServerNettyRemoteClient.sendSynMsg(tcpMsg, heartBeatDTO.getMsgId());
+                    TcpMsg tcpMsgRes = nameServerNettyRemoteClient.sendSyncMsg(tcpMsg, heartBeatDTO.getMsgId());
                     if (NameServerResponseCode.HEART_BEAT_SUCCESS.getCode() != tcpMsgRes.getCode()) {
                         log.error("heartbeat failed, nameserver response code:{}, ", tcpMsgRes.getCode());
                     }

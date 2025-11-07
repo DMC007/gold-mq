@@ -1,6 +1,6 @@
 package org.gold.common;
 
-import org.gold.remote.BrokerServerSyncFuture;
+import org.gold.remote.NameServerSyncFuture;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,13 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * @date 2025/11/7
  */
 public class NameServerSyncFutureManager {
-    private static Map<String, BrokerServerSyncFuture> syncFutureMap = new ConcurrentHashMap<>();
+    private static Map<String, NameServerSyncFuture> syncFutureMap = new ConcurrentHashMap<>();
 
-    public static void putSyncFuture(String key, BrokerServerSyncFuture syncFuture) {
+    public static void putSyncFuture(String key, NameServerSyncFuture syncFuture) {
         syncFutureMap.put(key, syncFuture);
     }
 
-    public static BrokerServerSyncFuture getSyncFuture(String key) {
+    public static NameServerSyncFuture getSyncFuture(String key) {
         return syncFutureMap.get(key);
     }
 

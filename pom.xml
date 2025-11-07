@@ -13,6 +13,7 @@
         <module>gold-broker</module>
         <module>gold-common</module>
         <module>gold-nameserver</module>
+        <module>gold-client</module>
     </modules>
 
     <properties>
