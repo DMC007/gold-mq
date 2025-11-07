@@ -18,6 +18,11 @@ public class GlobalProperties {
      */
     private String reBalanceStrategy;
 
+    //集群配置相关属性
+    private String brokerClusterMode;
+    private String brokerClusterRole;
+    private String brokerClusterGroup;
+
     /**
      * 读取环境变量中配置的mq存储绝对路径地址
      */
@@ -69,6 +74,30 @@ public class GlobalProperties {
 
     public void setReBalanceStrategy(String reBalanceStrategy) {
         this.reBalanceStrategy = reBalanceStrategy;
+    }
+
+    public String getBrokerClusterMode() {
+        return brokerClusterMode;
+    }
+
+    public void setBrokerClusterMode(String brokerClusterMode) {
+        this.brokerClusterMode = brokerClusterMode;
+    }
+
+    public String getBrokerClusterRole() {
+        return brokerClusterRole;
+    }
+
+    public void setBrokerClusterRole(String brokerClusterRole) {
+        this.brokerClusterRole = brokerClusterRole;
+    }
+
+    public String getBrokerClusterGroup() {
+        return brokerClusterGroup;
+    }
+
+    public void setBrokerClusterGroup(String brokerClusterGroup) {
+        this.brokerClusterGroup = brokerClusterGroup;
     }
 
     public String getGoldMqHome() {
