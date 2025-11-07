@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsgDecoder;
 import org.gold.coder.TcpMsgEncoder;
 import org.gold.constants.TcpConstants;
+import org.gold.event.EventBus;
 
 /**
  * @author zhaoxun
@@ -43,7 +44,8 @@ public class BrokerServer {
                         ch.pipeline().addLast(new DelimiterBasedFrameDecoder(1024 * 8, delimiter));
                         ch.pipeline().addLast(new TcpMsgDecoder());
                         ch.pipeline().addLast(new TcpMsgEncoder());
-                        //TODO 增加业务处理类
+                        // 增加业务处理类
+                        ch.pipeline().addLast(new BrokerServerHandler(new EventBus("broker-server-handle")));
                     }
                 });
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

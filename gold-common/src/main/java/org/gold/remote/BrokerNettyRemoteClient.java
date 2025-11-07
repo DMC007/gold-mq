@@ -80,13 +80,15 @@ public class BrokerNettyRemoteClient {
     }
 
     public TcpMsg sendSyncMsg(TcpMsg tcpMsg, String msgId) {
-        //该方法是异步方法，返回的channelFuture
-        channel.writeAndFlush(tcpMsg);
         //不要有传统springweb思维，这里我们的请求发出去之后，同步结果会在本身的netty服务的handler进行处理，
         // 这个时候通过Manager去设置好结果值，这里等待就能拿到结果，也就模拟出了同步的效果
         BrokerServerSyncFuture brokerServerSyncFuture = new BrokerServerSyncFuture();
         brokerServerSyncFuture.setMsgId(msgId);
         BrokerServerSyncFutureManager.putSyncFuture(msgId, brokerServerSyncFuture);
+        //这里需要先往BrokerServerSyncFutureManager存入消息信息，如果writeAndFlush在前面(异步)，
+        // 很可能在还没往Manager中存入消息, 主节点的响应就过来了，而SlaveSyncServerHandler处理响应的时候从manager获取信息是获取不到的
+        //该方法是异步方法，返回的channelFuture
+        channel.writeAndFlush(tcpMsg);
         try {
             //可能在等待结果的时候，节点挂掉了[get方法的finally会执行移除，无论是否异常，外面不用单独再去处理]
             return (TcpMsg) brokerServerSyncFuture.get(5, TimeUnit.SECONDS);

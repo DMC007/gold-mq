@@ -1,5 +1,6 @@
 package org.gold.cache;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.gold.config.GlobalProperties;
 import org.gold.core.*;
 import org.gold.model.ConsumerQueueOffsetModel;
@@ -9,6 +10,7 @@ import org.gold.netty.nameserver.NameServerClient;
 import org.gold.slave.SlaveSyncService;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -33,6 +35,8 @@ public class CommonCache {
     private static NameServerClient nameServerClient = new NameServerClient();
     private static HeartBeatTaskManager heartBeatTaskManager = new HeartBeatTaskManager();
     private static SlaveSyncService slaveSyncService;
+
+    private static Map<String, ChannelHandlerContext> slaveChannelMap = new HashMap<>();
 
     public static GlobalProperties getGlobalProperties() {
         return globalProperties;
@@ -124,5 +128,13 @@ public class CommonCache {
 
     public static void setSlaveSyncService(SlaveSyncService slaveSyncService) {
         CommonCache.slaveSyncService = slaveSyncService;
+    }
+
+    public static Map<String, ChannelHandlerContext> getSlaveChannelMap() {
+        return slaveChannelMap;
+    }
+
+    public static void setSlaveChannelMap(Map<String, ChannelHandlerContext> slaveChannelMap) {
+        CommonCache.slaveChannelMap = slaveChannelMap;
     }
 }

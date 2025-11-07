@@ -1,13 +1,18 @@
 package org.gold.slave;
 
+import com.alibaba.fastjson2.JSON;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
+import org.gold.common.BrokerServerSyncFutureManager;
+import org.gold.dto.StartSyncRespDTO;
+import org.gold.enums.BrokerResponseCode;
 import org.gold.event.EventBus;
 import org.gold.event.model.Event;
+import org.gold.remote.BrokerServerSyncFuture;
 
 /**
  * @author zhaoxun
@@ -30,6 +35,12 @@ public class SlaveSyncServerHandler extends SimpleChannelInboundHandler<TcpMsg> 
         int code = msg.getCode();
         byte[] body = msg.getBody();
         Event event = null;
-        //TODO
+        if (BrokerResponseCode.START_SYNC_SUCCESS.getCode() == code) {
+            StartSyncRespDTO startSyncRespDTO = JSON.parseObject(body, StartSyncRespDTO.class);
+            BrokerServerSyncFuture syncFuture = BrokerServerSyncFutureManager.getSyncFuture(startSyncRespDTO.getMsgId());
+            if (syncFuture != null) {
+                syncFuture.setResponse(startSyncRespDTO);
+            }
+        }
     }
 }
