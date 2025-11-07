@@ -9,6 +9,7 @@ import org.gold.core.ConsumerQueueAppendHandler;
 import org.gold.core.ConsumerQueueConsumeHandler;
 import org.gold.enums.BrokerClusterModeEnum;
 import org.gold.model.GoldMqTopicModel;
+import org.gold.slave.SlaveSyncService;
 
 import java.io.IOException;
 
@@ -25,6 +26,7 @@ public class BrokerStartUp {
     private static CommitLogAppendHandler commitLogAppendHandler;
     private static ConsumerQueueAppendHandler consumerQueueAppendHandler;
     private static ConsumerQueueConsumeHandler consumerQueueConsumeHandler;
+    private static SlaveSyncService slaveSyncService;
 
     /**
      * 启动
@@ -76,10 +78,16 @@ public class BrokerStartUp {
             return;
         }
         String masterAddress = CommonCache.getNameServerClient().queryBrokerMasterAddress();
-        if(masterAddress == null) {
-            return;
+        if (masterAddress != null) {
+            slaveSyncService = new SlaveSyncService();
+            CommonCache.setSlaveSyncService(slaveSyncService);
+            // 尝试与master建立连接
+            boolean connectResult = slaveSyncService.connectMasterBroker(masterAddress);
+            if (connectResult) {
+                // 连接建立成功, 发送同步开始消息
+                slaveSyncService.sendStartSyncMsg();
+            }
         }
-        //TODO 尝试与master建立连接
     }
 
 }

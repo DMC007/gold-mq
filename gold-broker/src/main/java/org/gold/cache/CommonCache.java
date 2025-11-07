@@ -6,6 +6,7 @@ import org.gold.model.ConsumerQueueOffsetModel;
 import org.gold.model.GoldMqTopicModel;
 import org.gold.netty.nameserver.HeartBeatTaskManager;
 import org.gold.netty.nameserver.NameServerClient;
+import org.gold.slave.SlaveSyncService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,7 @@ public class CommonCache {
 
     private static NameServerClient nameServerClient = new NameServerClient();
     private static HeartBeatTaskManager heartBeatTaskManager = new HeartBeatTaskManager();
+    private static SlaveSyncService slaveSyncService;
 
     public static GlobalProperties getGlobalProperties() {
         return globalProperties;
@@ -114,5 +116,13 @@ public class CommonCache {
 
     public static void setHeartBeatTaskManager(HeartBeatTaskManager heartBeatTaskManager) {
         CommonCache.heartBeatTaskManager = heartBeatTaskManager;
+    }
+
+    public static SlaveSyncService getSlaveSyncService() {
+        return slaveSyncService;
+    }
+
+    public static void setSlaveSyncService(SlaveSyncService slaveSyncService) {
+        CommonCache.slaveSyncService = slaveSyncService;
     }
 }
