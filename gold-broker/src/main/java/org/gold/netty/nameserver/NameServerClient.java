@@ -2,19 +2,21 @@ package org.gold.netty.nameserver;
 
 import com.alibaba.fastjson2.JSON;
 import io.netty.util.internal.StringUtil;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.cache.CommonCache;
 import org.gold.coder.TcpMsg;
 import org.gold.config.GlobalProperties;
+import org.gold.dto.PullBrokerIpDTO;
+import org.gold.dto.PullBrokerIpRespDTO;
 import org.gold.dto.ServiceRegistryReqDTO;
-import org.gold.enums.NameServerEventCode;
-import org.gold.enums.NameServerResponseCode;
-import org.gold.enums.RegistryTypeEnum;
+import org.gold.enums.*;
 import org.gold.remote.NameServerNettyRemoteClient;
 
 import java.net.Inet4Address;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -77,4 +79,32 @@ public class NameServerClient {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * 查询broker的master主节点地址
+     *
+     * @return broker的master主节点地址
+     */
+    public String queryBrokerMasterAddress() {
+        String clusterMode = CommonCache.getGlobalProperties().getBrokerClusterMode();
+        if (!BrokerClusterModeEnum.MASTER_SLAVE.getCode().equals(clusterMode)) {
+            log.warn("broker cluster mode is not master-slave, return null");
+            return null;
+        }
+        PullBrokerIpDTO reqDTO = new PullBrokerIpDTO();
+        reqDTO.setRole(BrokerRegistryRoleEnum.MASTER.getCode());
+        reqDTO.setBrokerClusterGroup(CommonCache.getGlobalProperties().getBrokerClusterGroup());
+        reqDTO.setMsgId(UUID.randomUUID().toString());
+        TcpMsg tcpMsg = new TcpMsg(NameServerEventCode.PULL_BROKER_IP_LIST.getCode(), JSON.toJSONBytes(reqDTO));
+        TcpMsg responseTcpMsg = nameServerNettyRemoteClient.sendSynMsg(tcpMsg, reqDTO.getMsgId());
+        PullBrokerIpRespDTO pullBrokerIpRespDTO = JSON.parseObject(responseTcpMsg.getBody(), PullBrokerIpRespDTO.class);
+        //这里采用单master模式，因此只返回第一个
+        List<String> masterAddressList = pullBrokerIpRespDTO.getMasterAddressList();
+        if (CollectionUtils.isEmpty(masterAddressList)) {
+            log.warn("no master broker ip address found");
+            return null;
+        }
+        return masterAddressList.getFirst();
+    }
+
 }

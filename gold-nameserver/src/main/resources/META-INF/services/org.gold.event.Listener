@@ -1,3 +1,4 @@
 org.gold.event.spi.listener.HeartBeatListener
 org.gold.event.spi.listener.RegistryListener
 org.gold.event.spi.listener.UnRegistryListener
+org.gold.event.spi.listener.PullBrokerIpListener

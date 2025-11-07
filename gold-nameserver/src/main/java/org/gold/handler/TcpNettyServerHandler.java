@@ -9,13 +9,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
 import org.gold.dto.HeartBeatDTO;
+import org.gold.dto.PullBrokerIpDTO;
 import org.gold.dto.ServiceRegistryReqDTO;
 import org.gold.enums.NameServerEventCode;
 import org.gold.event.EventBus;
-import org.gold.event.model.Event;
-import org.gold.event.model.HeartBeatEvent;
-import org.gold.event.model.RegistryEvent;
-import org.gold.event.model.UnRegistryEvent;
+import org.gold.event.model.*;
 
 import java.net.InetSocketAddress;
 
@@ -63,6 +61,13 @@ public class TcpNettyServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             HeartBeatEvent heartBeatEvent = new HeartBeatEvent();
             heartBeatEvent.setMsgId(heartBeatDTO.getMsgId());
             event = heartBeatEvent;
+        } else if (NameServerEventCode.PULL_BROKER_IP_LIST.getCode() == code) {
+            PullBrokerIpDTO pullBrokerIpDTO = JSON.parseObject(body, PullBrokerIpDTO.class);
+            PullBrokerIpEvent pullBrokerIpEvent = new PullBrokerIpEvent();
+            pullBrokerIpEvent.setMsgId(pullBrokerIpDTO.getMsgId());
+            pullBrokerIpEvent.setRole(pullBrokerIpDTO.getRole());
+            pullBrokerIpEvent.setBrokerClusterGroup(pullBrokerIpDTO.getBrokerClusterGroup());
+            event = pullBrokerIpEvent;
         } else {
             ctx.close();
             throw new RuntimeException("unsupported events");

@@ -7,7 +7,9 @@ package org.gold.enums;
 public enum NameServerEventCode {
     REGISTRY(1, "注册事件"),
     UN_REGISTRY(2, "下线事件"),
-    HEART_BEAT(3, "心跳事件");
+    HEART_BEAT(3, "心跳事件"),
+    PULL_BROKER_IP_LIST(11, "拉取broker的主节点ip地址"),
+    ;
     private Integer code;
     private String desc;
 
