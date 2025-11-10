@@ -5,9 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
 import org.gold.dto.*;
-import org.gold.enums.NameServerEventCode;
-import org.gold.enums.NameServerResponseCode;
-import org.gold.enums.RegistryTypeEnum;
+import org.gold.enums.*;
 import org.gold.event.EventBus;
 import org.gold.netty.BrokerRemoteRespHandler;
 import org.gold.remote.BrokerNettyRemoteClient;
@@ -73,12 +71,30 @@ public class DefaultProducerImpl implements Producer {
 
     @Override
     public SendResult send(MessageDTO message) {
-        return null;
+        BrokerNettyRemoteClient remoteClient = this.getBrokerNettyRemoteClient();
+        String msgId = UUID.randomUUID().toString();
+        message.setMsgId(msgId);
+        message.setSendWay(MessageSendWay.SYNC.getCode());
+        TcpMsg tcpMsg = new TcpMsg(BrokerEventCode.PUSH_MSG.getCode(), JSON.toJSONBytes(message));
+        TcpMsg tcpMsgRes = remoteClient.sendSyncMsg(tcpMsg, msgId);
+        SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = JSON.parseObject(tcpMsgRes.getBody(), SendMessageToBrokerResponseDTO.class);
+        int status = sendMessageToBrokerResponseDTO.getStatus();
+        SendResult sendResult = new SendResult();
+        if (status == SendMessageToBrokerResponseStatus.SUCCESS.getCode()) {
+            sendResult.setSendStatus(SendStatus.SUCCESS);
+        } else if (status == SendMessageToBrokerResponseStatus.FAIL.getCode()) {
+            sendResult.setSendStatus(SendStatus.FAILURE);
+            log.error("send message fail, desc:{}", sendMessageToBrokerResponseDTO.getDesc());
+        }
+        return sendResult;
     }
 
     @Override
     public void sendAsync(MessageDTO message) {
-
+        BrokerNettyRemoteClient remoteClient = this.getBrokerNettyRemoteClient();
+        message.setSendWay(MessageSendWay.ASYNC.getCode());
+        TcpMsg tcpMsg = new TcpMsg(BrokerEventCode.PUSH_MSG.getCode(), JSON.toJSONBytes(message));
+        remoteClient.sendAsyncMsg(tcpMsg);
     }
 
     @Override
@@ -188,6 +204,10 @@ public class DefaultProducerImpl implements Producer {
             }
         }, "refresh-broker-address-task");
         thread.start();
+    }
+
+    private BrokerNettyRemoteClient getBrokerNettyRemoteClient() {
+        return this.getBrokerNettyRemoteClientMap().values().stream().toList().getFirst();
     }
 
     public String getNameserverIp() {
