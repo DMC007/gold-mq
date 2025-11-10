@@ -8,14 +8,20 @@ import org.gold.dto.*;
 import org.gold.enums.NameServerEventCode;
 import org.gold.enums.NameServerResponseCode;
 import org.gold.enums.RegistryTypeEnum;
+import org.gold.event.EventBus;
+import org.gold.netty.BrokerRemoteRespHandler;
 import org.gold.remote.BrokerNettyRemoteClient;
 import org.gold.remote.NameServerNettyRemoteClient;
+import org.gold.utils.AssertUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author zhaoxun
@@ -59,6 +65,9 @@ public class DefaultProducerImpl implements Producer {
         this.producerId = UUID.randomUUID().toString();
         //开启心跳检测
         startHeartBeatTask();
+        fetchBrokerAddress();
+        //定时刷新broker地址
+        startRefreshBrokerAddressTask();
     }
 
 
@@ -116,6 +125,7 @@ public class DefaultProducerImpl implements Producer {
         brodkerAddressList = brokerIpRespDTO.getAddressList();
         masterAddressList = brokerIpRespDTO.getMasterAddressList();
         log.info("fetch broker address:{}, master:{}", brodkerAddressList, masterAddressList);
+        //获得broker地址后与其建立长连接
         connectBroker();
     }
 
@@ -123,7 +133,61 @@ public class DefaultProducerImpl implements Producer {
      * 连接broker
      */
     private void connectBroker() {
+        List<String> brokerAddressList = new ArrayList<>();
+        if ("single".equals(this.brokerRole)) {
+            AssertUtils.isNotEmpty(brokerAddressList, "broker address list is empty");
+            brokerAddressList = this.brodkerAddressList;
+        } else if ("master".equals(this.brokerRole)) {
+            AssertUtils.isNotEmpty(masterAddressList, "master broker address list is empty");
+            brokerAddressList = this.masterAddressList;
+        }
+        //判断之前是否有链接过目标地址，以及链接是否正常，如果链接正常则没必要重新链接，避免无意义的通讯中断情况发生
+        List<BrokerNettyRemoteClient> newBrokerNettyRemoteClientList = new ArrayList<>();
+        for (String brokerAddress : brokerAddressList) {
+            BrokerNettyRemoteClient brokerNettyRemoteClient = brokerNettyRemoteClientMap.get(brokerAddress);
+            if (brokerNettyRemoteClient == null) {
+                //说明之前没有链接过，需要额外链接接入
+                String[] brokerAddressArr = brokerAddress.split(":");
+                BrokerNettyRemoteClient newBrokerNettyRemoteClient = new BrokerNettyRemoteClient(brokerAddressArr[0], Integer.parseInt(brokerAddressArr[1]));
+                newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("consumer-client-eventbus")));
+                newBrokerNettyRemoteClientList.add(newBrokerNettyRemoteClient);
+                continue;
+            } else if (brokerNettyRemoteClient.isChannelActive()) {
+                //链接正常，不需要重新链接
+                newBrokerNettyRemoteClientList.add(brokerNettyRemoteClient);
+                continue;
+            }
+            //到这里的就是链接中断的, 尝试重新链接
+            String[] brokerAddressArr = brokerAddress.split(":");
+            BrokerNettyRemoteClient newBrokerNettyRemoteClient = new BrokerNettyRemoteClient(brokerAddressArr[0], Integer.parseInt(brokerAddressArr[1]));
+            newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("consumer-client-eventbus")));
+            //添加到链接列表中
+            newBrokerNettyRemoteClientList.add(newBrokerNettyRemoteClient);
+        }
+        List<String> findBrokerAddressList = brokerAddressList;
+        List<String> needRemoveBrokerIds = brokerNettyRemoteClientMap.keySet()
+                .stream().filter(reqId -> !findBrokerAddressList.contains(reqId)).toList();
+        for (String brokerId : needRemoveBrokerIds) {
+            brokerNettyRemoteClientMap.get(brokerId).close();
+            brokerNettyRemoteClientMap.remove(brokerId);
+        }
+        brokerNettyRemoteClientMap = newBrokerNettyRemoteClientList.stream()
+                .collect(Collectors.toMap(BrokerNettyRemoteClient::getBrokerReqId, Function.identity()));
+    }
 
+    public void startRefreshBrokerAddressTask() {
+        Thread thread = new Thread(() -> {
+            while (true) {
+                try {
+                    TimeUnit.SECONDS.sleep(3);
+                    log.info("refresh broker address");
+                    fetchBrokerAddress();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }, "refresh-broker-address-task");
+        thread.start();
     }
 
     public String getNameserverIp() {

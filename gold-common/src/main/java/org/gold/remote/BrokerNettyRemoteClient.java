@@ -102,4 +102,19 @@ public class BrokerNettyRemoteClient {
     public void sendAsyncMsg(TcpMsg tcpMsg) {
         channel.writeAndFlush(tcpMsg);
     }
+
+    public boolean isChannelActive() {
+        return channel.isActive();
+    }
+
+    public void close() {
+        this.channel.close().addListener((ChannelFutureListener) future -> {
+            if (future.isSuccess()) {
+                log.info("Broker:{} connection closed", this.getBrokerReqId());
+                eventLoopGroup.shutdownGracefully();
+            } else {
+                log.info("Broker:{} connection close error", this.getBrokerReqId());
+            }
+        });
+    }
 }
