@@ -6,13 +6,17 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
+import org.gold.common.BrokerServerSyncFutureManager;
 import org.gold.dto.MessageDTO;
+import org.gold.dto.SlaveSyncRespDTO;
 import org.gold.dto.StartSyncReqDTO;
 import org.gold.enums.BrokerEventCode;
+import org.gold.enums.BrokerResponseCode;
 import org.gold.event.EventBus;
 import org.gold.event.model.Event;
 import org.gold.event.model.PushMsgEvent;
 import org.gold.event.model.StartSyncEvent;
+import org.gold.remote.BrokerServerSyncFuture;
 
 /**
  * @author zhaoxun
@@ -46,6 +50,12 @@ public class BrokerServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             pushMsgEvent.setMsgId(messageDTO.getMsgId());
             log.info("receive push msg：{}", JSON.toJSONString(messageDTO));
             event = pushMsgEvent;
+        } else if (BrokerResponseCode.SLAVE_SYNC_RESP.getCode() == code) {
+            SlaveSyncRespDTO slaveSyncRespDTO = JSON.parseObject(body, SlaveSyncRespDTO.class);
+            BrokerServerSyncFuture syncFuture = BrokerServerSyncFutureManager.getSyncFuture(slaveSyncRespDTO.getMsgId());
+            if (syncFuture != null) {
+                syncFuture.setResponse(slaveSyncRespDTO);
+            }
         }
         if (event != null) {
             event.setChannelHandlerContext(ctx);

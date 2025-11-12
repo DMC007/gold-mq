@@ -112,13 +112,12 @@ public class CommitLogAppendHandler {
                 if (isAsyncSend || isDelayMsg) {
                     return;
                 }
-                //从节点响应主节点信息
+                //从节点响应主节点信息[主节点brokerHandler收到消息处理]
                 SlaveSyncRespDTO slaveSyncRespDTO = new SlaveSyncRespDTO();
                 slaveSyncRespDTO.setMsgId(messageDTO.getMsgId());
                 slaveSyncRespDTO.setSyncSuccess(true);
                 TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.SLAVE_SYNC_RESP.getCode(), JSON.toJSONBytes(slaveSyncRespDTO));
                 event.getChannelHandlerContext().writeAndFlush(tcpMsg);
-                return;
             }
         } else {
             //异步或延迟消息之间返回

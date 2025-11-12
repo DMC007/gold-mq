@@ -76,6 +76,7 @@ public class DefaultProducerImpl implements Producer {
         message.setMsgId(msgId);
         message.setSendWay(MessageSendWay.SYNC.getCode());
         TcpMsg tcpMsg = new TcpMsg(BrokerEventCode.PUSH_MSG.getCode(), JSON.toJSONBytes(message));
+        //注意这里是公共的封装逻辑，返回值底层是通过自定义future获取实现同步效果
         TcpMsg tcpMsgRes = remoteClient.sendSyncMsg(tcpMsg, msgId);
         SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = JSON.parseObject(tcpMsgRes.getBody(), SendMessageToBrokerResponseDTO.class);
         int status = sendMessageToBrokerResponseDTO.getStatus();
