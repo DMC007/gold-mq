@@ -1,6 +1,7 @@
 package org.gold.consumer;
 
 import com.alibaba.fastjson2.JSON;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
@@ -58,6 +59,7 @@ public class DefaultMqConsumer {
     private MessageConsumerListener messageConsumerListener;
     private Map<String, BrokerNettyRemoteClient> brokerNettyRemoteClientMap = new ConcurrentHashMap<>();
     private CountDownLatch countDownLatch = new CountDownLatch(1);
+    private CreateTopicClient createTopicClient = new CreateTopicClient();
 
     public void start() {
         //连接到nameserver
@@ -66,8 +68,29 @@ public class DefaultMqConsumer {
         boolean isRegister = this.doRegister();
         if (isRegister) {
             this.startHeartBeatTask();
+            this.fetchBrokerAddress();
+            this.creatRetryTopic();
+            //TODO 开启消费逻辑处理
+            this.startConsumerMsgTask(topic);
+            this.startRefreshBrokerAddressTask();
         }
     }
+
+    private void startConsumerMsgTask(String topic) {
+        //TODO 从broker拉取消息
+    }
+
+    /**
+     * 创建重试主题文件
+     */
+    private void creatRetryTopic() {
+        if (CollectionUtils.isNotEmpty(this.getBrokerAddressList())) {
+            createTopicClient.createTopic("retry%" + this.getConsumerGroup(), this.getBrokerAddressList().getFirst());
+        } else if (CollectionUtils.isNotEmpty(this.getMasterAddressList())) {
+            createTopicClient.createTopic("retry%" + this.getConsumerGroup(), this.getMasterAddressList().getFirst());
+        }
+    }
+
 
     /**
      * 注册到nameserver[跟rocketmq的生产消费者初始化不同，这里只是简单的跟nameserver做长连接，实际上可以做成短链接]
@@ -181,6 +204,21 @@ public class DefaultMqConsumer {
         }
         brokerNettyRemoteClientMap = newBrokerNettyRemoteClientList.stream()
                 .collect(Collectors.toMap(BrokerNettyRemoteClient::getBrokerReqId, Function.identity()));
+    }
+
+    public void startRefreshBrokerAddressTask() {
+        Thread thread = new Thread(() -> {
+            while (true) {
+                try {
+                    TimeUnit.SECONDS.sleep(3);
+                    log.info("refresh broker address");
+                    fetchBrokerAddress();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }, "refresh-broker-address-task");
+        thread.start();
     }
 
     public String getNameserverIp() {
