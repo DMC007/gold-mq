@@ -158,33 +158,34 @@ public class DefaultProducerImpl implements Producer {
             AssertUtils.isNotEmpty(masterAddressList, "master broker address list is empty");
             brokerAddressList = this.masterAddressList;
         }
-        //判断之前是否有链接过目标地址，以及链接是否正常，如果链接正常则没必要重新链接，避免无意义的通讯中断情况发生
+        //判断之前是否有连接过目标地址，以及连接是否正常，如果连接正常则没必要重新连接，避免无意义的通讯中断情况发生
         List<BrokerNettyRemoteClient> newBrokerNettyRemoteClientList = new ArrayList<>();
         for (String brokerAddress : brokerAddressList) {
             BrokerNettyRemoteClient brokerNettyRemoteClient = brokerNettyRemoteClientMap.get(brokerAddress);
             if (brokerNettyRemoteClient == null) {
-                //说明之前没有链接过，需要额外链接接入
+                //说明之前没有连接过，需要额外连接接入
                 String[] brokerAddressArr = brokerAddress.split(":");
                 BrokerNettyRemoteClient newBrokerNettyRemoteClient = new BrokerNettyRemoteClient(brokerAddressArr[0], Integer.parseInt(brokerAddressArr[1]));
-                newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("consumer-client-eventbus")));
+                newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("producer-client-eventbus")));
                 newBrokerNettyRemoteClientList.add(newBrokerNettyRemoteClient);
                 continue;
             } else if (brokerNettyRemoteClient.isChannelActive()) {
-                //链接正常，不需要重新链接
+                //连接正常，不需要重新连接
                 newBrokerNettyRemoteClientList.add(brokerNettyRemoteClient);
                 continue;
             }
-            //到这里的就是链接中断的, 尝试重新链接
+            //到这里的就是连接中断的, 尝试重新连接
             String[] brokerAddressArr = brokerAddress.split(":");
             BrokerNettyRemoteClient newBrokerNettyRemoteClient = new BrokerNettyRemoteClient(brokerAddressArr[0], Integer.parseInt(brokerAddressArr[1]));
-            newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("consumer-client-eventbus")));
-            //添加到链接列表中
+            newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("producer-client-eventbus")));
+            //添加到连接列表中
             newBrokerNettyRemoteClientList.add(newBrokerNettyRemoteClient);
         }
         List<String> findBrokerAddressList = brokerAddressList;
         List<String> needRemoveBrokerIds = brokerNettyRemoteClientMap.keySet()
                 .stream().filter(reqId -> !findBrokerAddressList.contains(reqId)).toList();
         for (String brokerId : needRemoveBrokerIds) {
+            //关闭无用的连接
             brokerNettyRemoteClientMap.get(brokerId).close();
             brokerNettyRemoteClientMap.remove(brokerId);
         }

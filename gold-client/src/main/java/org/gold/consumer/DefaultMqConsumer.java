@@ -11,16 +11,22 @@ import org.gold.dto.ServiceRegistryReqDTO;
 import org.gold.enums.NameServerEventCode;
 import org.gold.enums.NameServerResponseCode;
 import org.gold.enums.RegistryTypeEnum;
+import org.gold.event.EventBus;
+import org.gold.netty.BrokerRemoteRespHandler;
 import org.gold.producer.DefaultProducerImpl;
 import org.gold.remote.BrokerNettyRemoteClient;
 import org.gold.remote.NameServerNettyRemoteClient;
+import org.gold.utils.AssertUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author zhaoxun
@@ -130,7 +136,51 @@ public class DefaultMqConsumer {
     }
 
     private void connectBroker() {
-
+        List<String> brokerAddressList = new ArrayList<>();
+        if ("single".equals(brokerRole)) {
+            AssertUtils.isNotEmpty(this.getBrokerAddressList(), "broker address list is empty");
+            brokerAddressList = this.getBrokerAddressList();
+        } else if ("master".equals(brokerRole)) {
+            AssertUtils.isNotEmpty(this.getMasterAddressList(), "master broker address list is empty");
+            brokerAddressList = this.getMasterAddressList();
+        } else if ("slave".equals(brokerRole)) {
+            AssertUtils.isNotEmpty(this.getSlaveAddressList(), "slave broker address list is empty");
+            brokerAddressList = this.getSlaveAddressList();
+        }
+        //判断之前是否有链接过目标地址，以及链接是否正常，如果链接正常则没必要重新链接，避免无意义的通讯中断情况发生
+        List<BrokerNettyRemoteClient> newBrokerNettyRemoteClientList = new ArrayList<>();
+        for (String brokerAddress : brokerAddressList) {
+            BrokerNettyRemoteClient brokerNettyRemoteClient = brokerNettyRemoteClientMap.get(brokerAddress);
+            if (brokerNettyRemoteClient == null) {
+                //之前没有连接过，需要额外连接接入
+                String[] brokerAddressArr = brokerAddress.split(":");
+                BrokerNettyRemoteClient newBrokerNettyRemoteClient = new BrokerNettyRemoteClient(brokerAddressArr[0], Integer.parseInt(brokerAddressArr[1]));
+                newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("consumer-client-eventbus")));
+                //新的连接通道建立
+                newBrokerNettyRemoteClientList.add(newBrokerNettyRemoteClient);
+            } else if (brokerNettyRemoteClient.isChannelActive()) {
+                //连接正常，不需要重新连接
+                newBrokerNettyRemoteClientList.add(brokerNettyRemoteClient);
+                continue;
+            }
+            //到这里的就是连接中断的, 尝试重新连接
+            String[] brokerAddressArr = brokerAddress.split(":");
+            BrokerNettyRemoteClient newBrokerNettyRemoteClient = new BrokerNettyRemoteClient(brokerAddressArr[0], Integer.parseInt(brokerAddressArr[1]));
+            newBrokerNettyRemoteClient.buildConnection(new BrokerRemoteRespHandler(new EventBus("consumer-client-eventbus")));
+            //添加到连接列表中
+            newBrokerNettyRemoteClientList.add(newBrokerNettyRemoteClient);
+        }
+        //需要被关闭的链接过滤出来，进行优雅暂停，然后切换使用新的链接
+        List<String> findBrokerAddressList = brokerAddressList;
+        List<String> needRemoveBrokerIds = brokerNettyRemoteClientMap.keySet()
+                .stream().filter(reqId -> !findBrokerAddressList.contains(reqId)).toList();
+        for (String brokerId : needRemoveBrokerIds) {
+            //关闭无用的连接
+            brokerNettyRemoteClientMap.get(brokerId).close();
+            brokerNettyRemoteClientMap.remove(brokerId);
+        }
+        brokerNettyRemoteClientMap = newBrokerNettyRemoteClientList.stream()
+                .collect(Collectors.toMap(BrokerNettyRemoteClient::getBrokerReqId, Function.identity()));
     }
 
     public String getNameserverIp() {
