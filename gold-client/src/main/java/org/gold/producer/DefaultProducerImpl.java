@@ -36,7 +36,7 @@ public class DefaultProducerImpl implements Producer {
     private String nameserverPassword;
     private String brokerClusterGroup;
     private String brokerRole = "single";
-    private List<String> brodkerAddressList;
+    private List<String> brokerAddressList;
     private List<String> masterAddressList;
     //TODO 事务相关属性
     private String producerId;
@@ -139,9 +139,9 @@ public class DefaultProducerImpl implements Producer {
         TcpMsg tcpMsg = new TcpMsg(NameServerEventCode.PULL_BROKER_IP_LIST.getCode(), JSON.toJSONBytes(reqDTO));
         TcpMsg tcpMsgRes = nameServerNettyRemoteClient.sendSyncMsg(tcpMsg, brokerAddressMsgId);
         PullBrokerIpRespDTO brokerIpRespDTO = JSON.parseObject(tcpMsgRes.getBody(), PullBrokerIpRespDTO.class);
-        brodkerAddressList = brokerIpRespDTO.getAddressList();
+        brokerAddressList = brokerIpRespDTO.getAddressList();
         masterAddressList = brokerIpRespDTO.getMasterAddressList();
-        log.info("fetch broker address:{}, master:{}", brodkerAddressList, masterAddressList);
+        log.info("fetch broker address:{}, master:{}", brokerAddressList, masterAddressList);
         //获得broker地址后与其建立长连接
         connectBroker();
     }
@@ -153,7 +153,7 @@ public class DefaultProducerImpl implements Producer {
         List<String> brokerAddressList = new ArrayList<>();
         if ("single".equals(this.brokerRole)) {
             AssertUtils.isNotEmpty(brokerAddressList, "broker address list is empty");
-            brokerAddressList = this.brodkerAddressList;
+            brokerAddressList = this.brokerAddressList;
         } else if ("master".equals(this.brokerRole)) {
             AssertUtils.isNotEmpty(masterAddressList, "master broker address list is empty");
             brokerAddressList = this.masterAddressList;
@@ -259,12 +259,12 @@ public class DefaultProducerImpl implements Producer {
         this.brokerRole = brokerRole;
     }
 
-    public List<String> getBrodkerAddressList() {
-        return brodkerAddressList;
+    public List<String> getBrokerAddressList() {
+        return brokerAddressList;
     }
 
-    public void setBrodkerAddressList(List<String> brodkerAddressList) {
-        this.brodkerAddressList = brodkerAddressList;
+    public void setBrokerAddressList(List<String> brokerAddressList) {
+        this.brokerAddressList = brokerAddressList;
     }
 
     public List<String> getMasterAddressList() {
