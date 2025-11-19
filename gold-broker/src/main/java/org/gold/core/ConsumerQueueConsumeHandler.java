@@ -75,7 +75,7 @@ public class ConsumerQueueConsumeHandler {
         List<byte[]> consumerQueueContentList = consumerQueueMMapFileModel.readContent(consumerQueueOffset, batchSize);
         List<ConsumerMsgCommitLogDTO> commitLogBodyContentList = new ArrayList<>();
         for (byte[] content : consumerQueueContentList) {
-            //跟进consumerQueue的内容确定commitLog的读取位置
+            //根据consumerQueue的内容确定commitLog的读取位置
             ConsumerQueueDetailModel consumerQueueDetailModel = new ConsumerQueueDetailModel();
             //构建consumerQueueDetailModel[数据转换]
             consumerQueueDetailModel.buildFromBytes(content);

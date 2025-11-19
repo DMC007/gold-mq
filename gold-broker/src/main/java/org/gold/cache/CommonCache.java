@@ -7,12 +7,15 @@ import org.gold.model.ConsumerQueueOffsetModel;
 import org.gold.model.GoldMqTopicModel;
 import org.gold.netty.nameserver.HeartBeatTaskManager;
 import org.gold.netty.nameserver.NameServerClient;
+import org.gold.rebalance.ConsumerInstance;
+import org.gold.rebalance.ConsumerInstancePool;
 import org.gold.slave.SlaveSyncService;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,6 +40,14 @@ public class CommonCache {
     private static SlaveSyncService slaveSyncService;
 
     private static Map<String, ChannelHandlerContext> slaveChannelMap = new HashMap<>();
+
+    private static ConsumerInstancePool consumerInstancePool = new ConsumerInstancePool();
+    /**
+     * key: topic
+     * value: key: consumerGroup
+     * value: consumerInstanceList
+     */
+    private static Map<String, Map<String, List<ConsumerInstance>>> consumerHoldMap = new ConcurrentHashMap<>();
 
     public static GlobalProperties getGlobalProperties() {
         return globalProperties;
@@ -136,5 +147,21 @@ public class CommonCache {
 
     public static void setSlaveChannelMap(Map<String, ChannelHandlerContext> slaveChannelMap) {
         CommonCache.slaveChannelMap = slaveChannelMap;
+    }
+
+    public static ConsumerInstancePool getConsumerInstancePool() {
+        return consumerInstancePool;
+    }
+
+    public static void setConsumerInstancePool(ConsumerInstancePool consumerInstancePool) {
+        CommonCache.consumerInstancePool = consumerInstancePool;
+    }
+
+    public static Map<String, Map<String, List<ConsumerInstance>>> getConsumerHoldMap() {
+        return consumerHoldMap;
+    }
+
+    public static void setConsumerHoldMap(Map<String, Map<String, List<ConsumerInstance>>> consumerHoldMap) {
+        CommonCache.consumerHoldMap = consumerHoldMap;
     }
 }

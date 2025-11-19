@@ -3,20 +3,25 @@ package org.gold.nett.broker;
 import com.alibaba.fastjson2.JSON;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.util.AttributeKey;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
 import org.gold.common.BrokerServerSyncFutureManager;
+import org.gold.dto.ConsumerMsgReqDTO;
 import org.gold.dto.MessageDTO;
 import org.gold.dto.SlaveSyncRespDTO;
 import org.gold.dto.StartSyncReqDTO;
 import org.gold.enums.BrokerEventCode;
 import org.gold.enums.BrokerResponseCode;
 import org.gold.event.EventBus;
+import org.gold.event.model.ConsumerMsgEvent;
 import org.gold.event.model.Event;
 import org.gold.event.model.PushMsgEvent;
 import org.gold.event.model.StartSyncEvent;
 import org.gold.remote.BrokerServerSyncFuture;
+
+import java.net.InetSocketAddress;
 
 /**
  * @author zhaoxun
@@ -56,6 +61,18 @@ public class BrokerServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             if (syncFuture != null) {
                 syncFuture.setResponse(slaveSyncRespDTO);
             }
+        } else if (BrokerEventCode.CONSUME_MSG.getCode() == code) {
+            ConsumerMsgReqDTO consumerMsgReqDTO = JSON.parseObject(body, ConsumerMsgReqDTO.class);
+            InetSocketAddress remoteAddress = (InetSocketAddress) ctx.channel().remoteAddress();
+            consumerMsgReqDTO.setIp(remoteAddress.getHostString());
+            consumerMsgReqDTO.setPort(remoteAddress.getPort());
+            //定义事件
+            ConsumerMsgEvent consumerMsgEvent = new ConsumerMsgEvent();
+            consumerMsgEvent.setConsumerMsgReqDTO(consumerMsgReqDTO);
+            consumerMsgEvent.setMsgId(consumerMsgReqDTO.getMsgId());
+            //TODO
+            ctx.channel().attr(AttributeKey.valueOf("consumer-reqId")).set(consumerMsgReqDTO.getIp() + ":" + consumerMsgReqDTO.getPort());
+            event = consumerMsgEvent;
         }
         if (event != null) {
             event.setChannelHandlerContext(ctx);
