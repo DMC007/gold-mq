@@ -66,6 +66,12 @@ public class DefaultMqConsumer {
             this.creatRetryTopic();
             //TODO 开启消费逻辑处理
             this.startConsumerMsgTask(topic);
+            //参考rocketmq设计
+            //重试消息通常是由于消费者逻辑问题导致的消费失败
+            //同一个topic可能被多个不同的消费组订阅
+            //每个消费组的消费逻辑和失败原因可能完全不同
+            //因此按照消费组(consumerGroup)来隔离重试队列更合理【死信队列同样逻辑】
+            this.startConsumerMsgTask("retry%" + consumerGroup);
             this.startRefreshBrokerAddressTask();
             //这里只是方便测试，阻塞测试线程接收
             countDownLatch.await();
@@ -116,6 +122,7 @@ public class DefaultMqConsumer {
                         boolean brokerHasData = false;
                         //核心业务
                         if (CollectionUtils.isNotEmpty(consumerMsgRespDTOList)) {
+                            //遍历每一个queueId队列的消息消费
                             for (ConsumerMsgRespDTO consumerMsgRespDTO : consumerMsgRespDTOList) {
                                 List<ConsumerMsgCommitLogDTO> commitLogContentList = consumerMsgRespDTO.getCommitLogContentList();
                                 if (CollectionUtils.isEmpty(commitLogContentList)) {
@@ -143,17 +150,48 @@ public class DefaultMqConsumer {
                                     consumerMsgAckReqDTO.setQueueId(consumerMsgRespDTO.getQueueId());
                                     TcpMsg ackTcpMsg = new TcpMsg(BrokerEventCode.CONSUME_SUCCESS_MSG.getCode(), JSON.toJSONBytes(consumerMsgAckReqDTO));
                                     TcpMsg ackTcpMsgRes = brokerNettyRemoteClient.sendSyncMsg(ackTcpMsg, ackMsgId);
-                                    ConsumeMsgAckRespDTO consumeMsgAckRespDTO = JSON.parseObject(ackTcpMsgRes.getBody(), ConsumeMsgAckRespDTO.class);
+                                    ConsumerMsgAckRespDTO consumeMsgAckRespDTO = JSON.parseObject(ackTcpMsgRes.getBody(), ConsumerMsgAckRespDTO.class);
                                     if (AckStatus.SUCCESS.getCode() == consumeMsgAckRespDTO.getAckStatus()) {
                                         log.info("consume ack success!");
                                     } else {
                                         log.error("consume ack fail!");
                                     }
                                 }
+                                //消费失败，回应ack，然后丢入重试队列里面
+                                else if (consumeResult.getConsumeResultStatus() == ConsumeResultStatus.CONSUME_LATER.getCode()) {
+                                    this.queueId = consumerMsgRespDTO.getQueueId();
+                                    //定义请求体
+                                    ConsumerMsgRetryReqDTO consumerMsgRetryReqDTO = new ConsumerMsgRetryReqDTO();
+                                    List<ConsumerMsgRetryReqDetailDTO> consumerMsgRetryReqDetailDTOList = new ArrayList<>();
+                                    for (ConsumerMsgCommitLogDTO consumerMsgCommitLogDTO : commitLogContentList) {
+                                        ConsumerMsgRetryReqDetailDTO consumerMsgRetryReqDetailDTO = new ConsumerMsgRetryReqDetailDTO();
+                                        consumerMsgRetryReqDetailDTO.setTopic(this.topic);
+                                        consumerMsgRetryReqDetailDTO.setConsumerGroup(this.consumerGroup);
+                                        consumerMsgRetryReqDetailDTO.setQueueId(consumerMsgRespDTO.getQueueId());
+                                        consumerMsgRetryReqDetailDTO.setCommitLogOffset(consumerMsgCommitLogDTO.getCommitLogOffset());
+                                        consumerMsgRetryReqDetailDTO.setCommitLogMsgLength(consumerMsgCommitLogDTO.getCommitLogSize());
+                                        consumerMsgRetryReqDetailDTO.setRetryTime(consumerMsgCommitLogDTO.getRetryTimes() + 1);
+                                        consumerMsgRetryReqDetailDTO.setCommitLogName(consumerMsgCommitLogDTO.getFileName());
+                                        //放入集合
+                                        consumerMsgRetryReqDetailDTOList.add(consumerMsgRetryReqDetailDTO);
+                                        log.info("consumer topic:{}, retry count:{}", this.topic, consumerMsgCommitLogDTO.getRetryTimes());
+                                    }
+                                    //赋值
+                                    consumerMsgRetryReqDTO.setConsumerMsgRetryReqDetailDTOList(consumerMsgRetryReqDetailDTOList);
+                                    String consumerFailMsgId = UUID.randomUUID().toString();
+                                    TcpMsg consumerFailTcpMsg = new TcpMsg(BrokerEventCode.CONSUME_LATER_MSG.getCode(), JSON.toJSONBytes(consumerMsgRetryReqDTO));
+                                    TcpMsg consumerFailTcpMsgRes = brokerNettyRemoteClient.sendSyncMsg(consumerFailTcpMsg, consumerFailMsgId);
+                                    log.info("consumer fail res: {}", JSON.toJSONString(consumerFailTcpMsgRes));
+                                }
                             }
                         }
+                        //这里是一个轮询睡眠频率的调节，如果该次存在消息，则拉取频率快，如果该次没有消息，则拉取频率慢
+                        if (brokerHasData) {
+                            TimeUnit.MILLISECONDS.sleep(EACH_BATCH_PULL_MSG_INTER);
+                        } else {
+                            TimeUnit.MILLISECONDS.sleep(EACH_BATCH_PULL_MSG_INTER_WHEN_NO_MSG);
+                        }
                     }
-
                 } catch (Exception e) {
                     log.error("pull msg error", e);
                     try {

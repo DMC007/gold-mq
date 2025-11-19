@@ -4,7 +4,7 @@ package org.gold.dto;
  * @author zhaoxun
  * @date 2025/11/18
  */
-public class ConsumeMsgAckRespDTO extends BaseBrokerRemoteDTO {
+public class ConsumerMsgAckRespDTO extends BaseBrokerRemoteDTO {
 
     /**
      * ack响应是否成功
