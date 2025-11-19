@@ -9,17 +9,11 @@ import org.apache.logging.log4j.Logger;
 import org.gold.cache.CommonCache;
 import org.gold.coder.TcpMsg;
 import org.gold.common.BrokerServerSyncFutureManager;
-import org.gold.dto.ConsumerMsgReqDTO;
-import org.gold.dto.MessageDTO;
-import org.gold.dto.SlaveSyncRespDTO;
-import org.gold.dto.StartSyncReqDTO;
+import org.gold.dto.*;
 import org.gold.enums.BrokerEventCode;
 import org.gold.enums.BrokerResponseCode;
 import org.gold.event.EventBus;
-import org.gold.event.model.ConsumerMsgEvent;
-import org.gold.event.model.Event;
-import org.gold.event.model.PushMsgEvent;
-import org.gold.event.model.StartSyncEvent;
+import org.gold.event.model.*;
 import org.gold.remote.BrokerServerSyncFuture;
 
 import java.net.InetSocketAddress;
@@ -74,6 +68,16 @@ public class BrokerServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             //这里定义属性主要用来在CommonCache里面存储consumerInstance实例，故当消费组发生断开连接后CommonCache会删除对应的consumerInstance实例
             ctx.channel().attr(AttributeKey.valueOf("consumer-reqId")).set(consumerMsgReqDTO.getIp() + ":" + consumerMsgReqDTO.getPort());
             event = consumerMsgEvent;
+        } else if (BrokerEventCode.CONSUME_SUCCESS_MSG.getCode() == code) {
+            ConsumerMsgAckReqDTO consumerMsgAckReqDTO = JSON.parseObject(body, ConsumerMsgAckReqDTO.class);
+            InetSocketAddress remoteAddress = (InetSocketAddress) ctx.channel().remoteAddress();
+            consumerMsgAckReqDTO.setIp(remoteAddress.getHostString());
+            consumerMsgAckReqDTO.setPort(remoteAddress.getPort());
+            //定义事件
+            ConsumerMsgAckEvent consumerMsgAckEvent = new ConsumerMsgAckEvent();
+            consumerMsgAckEvent.setConsumerMsgAckReqDTO(consumerMsgAckReqDTO);
+            consumerMsgAckEvent.setMsgId(consumerMsgAckReqDTO.getMsgId());
+            event = consumerMsgAckEvent;
         }
         if (event != null) {
             event.setChannelHandlerContext(ctx);
