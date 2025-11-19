@@ -5,13 +5,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.coder.TcpMsg;
-import org.gold.dto.HeartBeatDTO;
-import org.gold.dto.PullBrokerIpDTO;
-import org.gold.dto.PullBrokerIpRespDTO;
-import org.gold.dto.ServiceRegistryReqDTO;
-import org.gold.enums.NameServerEventCode;
-import org.gold.enums.NameServerResponseCode;
-import org.gold.enums.RegistryTypeEnum;
+import org.gold.dto.*;
+import org.gold.enums.*;
 import org.gold.event.EventBus;
 import org.gold.netty.BrokerRemoteRespHandler;
 import org.gold.producer.DefaultProducerImpl;
@@ -41,7 +36,6 @@ public class DefaultMqConsumer {
     //如果broker没有数据，则每间隔1s拉取一次
     private final static int EACH_BATCH_PULL_MSG_INTER_WHEN_NO_MSG = 1000;
 
-
     private String nameserverIp;
     private Integer nameserverPort;
     private String nameserverUser;
@@ -61,7 +55,7 @@ public class DefaultMqConsumer {
     private CountDownLatch countDownLatch = new CountDownLatch(1);
     private CreateTopicClient createTopicClient = new CreateTopicClient();
 
-    public void start() {
+    public void start() throws InterruptedException {
         //连接到nameserver
         nameServerNettyRemoteClient = new NameServerNettyRemoteClient(nameserverIp, nameserverPort);
         nameServerNettyRemoteClient.buildConnection();
@@ -73,11 +67,105 @@ public class DefaultMqConsumer {
             //TODO 开启消费逻辑处理
             this.startConsumerMsgTask(topic);
             this.startRefreshBrokerAddressTask();
+            //这里只是方便测试，阻塞测试线程接收
+            countDownLatch.await();
         }
     }
 
     private void startConsumerMsgTask(String topic) {
-        //TODO 从broker拉取消息
+        //从broker拉取消息
+        Thread consumeTaskThread = new Thread(() -> {
+            while (true) {
+                try {
+                    List<String> brokerNodeAddressList = new ArrayList<>();
+                    //可通过调整角色属性来控制从哪个broker节点拉取数据
+                    if ("single".equals(brokerRole)) {
+                        brokerNodeAddressList = this.getBrokerAddressList();
+                    } else if ("master".equals(brokerRole)) {
+                        brokerNodeAddressList = this.getMasterAddressList();
+                    } else if ("slave".equals(brokerRole)) {
+                        brokerNodeAddressList = this.getSlaveAddressList();
+                    }
+                    if (CollectionUtils.isEmpty(brokerNodeAddressList)) {
+                        log.info("no broker node address!");
+                        TimeUnit.MILLISECONDS.sleep(EACH_BATCH_PULL_MSG_INTER_WHEN_NO_MSG);
+                        continue;
+                    }
+                    for (String brokerNodeAddress : brokerNodeAddressList) {
+                        BrokerNettyRemoteClient brokerNettyRemoteClient = this.getBrokerNettyRemoteClientMap().get(brokerNodeAddress);
+                        if (brokerNettyRemoteClient == null) {
+                            log.error("not find broker node address!");
+                            continue;
+                        }
+                        String msgId = UUID.randomUUID().toString();
+                        ConsumerMsgReqDTO consumerMsgReqDTO = new ConsumerMsgReqDTO();
+                        consumerMsgReqDTO.setMsgId(msgId);
+                        consumerMsgReqDTO.setConsumeGroup(consumerGroup);
+                        consumerMsgReqDTO.setBatchSize(batchSize);
+                        consumerMsgReqDTO.setTopic(topic);
+                        //拉取消息消费
+                        TcpMsg tcpMsg = new TcpMsg(BrokerEventCode.CONSUME_MSG.getCode(), JSON.toJSONBytes(consumerMsgReqDTO));
+                        TcpMsg tcpMsgRes = brokerNettyRemoteClient.sendSyncMsg(tcpMsg, msgId);
+                        //定义批量消息体
+                        List<ConsumerMsgRespDTO> consumerMsgRespDTOList = null;
+                        //注意，这个实体里面的list，是标识一个queueId的一批数据，因为可能实际环境，一个消费者订阅了多个队列
+                        ConsumerMsgBaseRespDTO consumerMsgBaseRespDTO = JSON.parseObject(tcpMsgRes.getBody(), ConsumerMsgBaseRespDTO.class);
+                        if (consumerMsgBaseRespDTO != null) {
+                            consumerMsgRespDTOList = consumerMsgBaseRespDTO.getConsumerMsgRespDTOList();
+                        }
+                        boolean brokerHasData = false;
+                        //核心业务
+                        if (CollectionUtils.isNotEmpty(consumerMsgRespDTOList)) {
+                            for (ConsumerMsgRespDTO consumerMsgRespDTO : consumerMsgRespDTOList) {
+                                List<ConsumerMsgCommitLogDTO> commitLogContentList = consumerMsgRespDTO.getCommitLogContentList();
+                                if (CollectionUtils.isEmpty(commitLogContentList)) {
+                                    continue;
+                                }
+                                List<ConsumerMessage> consumerMessageList = new ArrayList<>();
+                                for (ConsumerMsgCommitLogDTO consumerMsgCommitLogDTO : commitLogContentList) {
+                                    ConsumerMessage consumerMessage = new ConsumerMessage();
+                                    consumerMessage.setQueueId(consumerMsgRespDTO.getQueueId());
+                                    consumerMessage.setConsumerMsgCommitLogDTO(consumerMsgCommitLogDTO);
+                                    consumerMessageList.add(consumerMessage);
+                                }
+                                brokerHasData = true;
+                                //TODO 需要自行实现实现类
+                                ConsumeResult consumeResult = messageConsumerListener.consume(consumerMessageList);
+                                //消费成功，发送ack响应
+                                if (consumeResult.getConsumeResultStatus() == ConsumeResultStatus.CONSUME_SUCCESS.getCode()) {
+                                    this.queueId = consumerMsgRespDTO.getQueueId();
+                                    String ackMsgId = UUID.randomUUID().toString();
+                                    ConsumerMsgAckReqDTO consumerMsgAckReqDTO = new ConsumerMsgAckReqDTO();
+                                    consumerMsgAckReqDTO.setMsgId(ackMsgId);
+                                    consumerMsgAckReqDTO.setAckCount(this.batchSize);
+                                    consumerMsgAckReqDTO.setTopic(this.topic);
+                                    consumerMsgAckReqDTO.setConsumeGroup(consumerGroup);
+                                    consumerMsgAckReqDTO.setQueueId(consumerMsgRespDTO.getQueueId());
+                                    TcpMsg ackTcpMsg = new TcpMsg(BrokerEventCode.CONSUME_SUCCESS_MSG.getCode(), JSON.toJSONBytes(consumerMsgAckReqDTO));
+                                    TcpMsg ackTcpMsgRes = brokerNettyRemoteClient.sendSyncMsg(ackTcpMsg, ackMsgId);
+                                    ConsumeMsgAckRespDTO consumeMsgAckRespDTO = JSON.parseObject(ackTcpMsgRes.getBody(), ConsumeMsgAckRespDTO.class);
+                                    if (AckStatus.SUCCESS.getCode() == consumeMsgAckRespDTO.getAckStatus()) {
+                                        log.info("consume ack success!");
+                                    } else {
+                                        log.error("consume ack fail!");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                } catch (Exception e) {
+                    log.error("pull msg error", e);
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(EACH_BATCH_PULL_MSG_INTER_WHEN_NO_MSG);
+                    } catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+
+            }
+        }, "consume-msg-task");
+        consumeTaskThread.start();
     }
 
     /**
