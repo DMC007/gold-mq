@@ -6,6 +6,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.gold.cache.CommonCache;
 import org.gold.coder.TcpMsg;
 import org.gold.common.BrokerServerSyncFutureManager;
 import org.gold.dto.ConsumerMsgReqDTO;
@@ -70,7 +71,7 @@ public class BrokerServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             ConsumerMsgEvent consumerMsgEvent = new ConsumerMsgEvent();
             consumerMsgEvent.setConsumerMsgReqDTO(consumerMsgReqDTO);
             consumerMsgEvent.setMsgId(consumerMsgReqDTO.getMsgId());
-            //TODO
+            //这里定义属性主要用来在CommonCache里面存储consumerInstance实例，故当消费组发生断开连接后CommonCache会删除对应的consumerInstance实例
             ctx.channel().attr(AttributeKey.valueOf("consumer-reqId")).set(consumerMsgReqDTO.getIp() + ":" + consumerMsgReqDTO.getPort());
             event = consumerMsgEvent;
         }
@@ -78,5 +79,17 @@ public class BrokerServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             event.setChannelHandlerContext(ctx);
             eventBus.publish(event);
         }
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        log.info("channel inactive：{}", ctx.channel().remoteAddress());
+        super.channelInactive(ctx);
+        Object reqId = ctx.channel().attr(AttributeKey.valueOf("consumer-reqId")).get();
+        if (reqId == null) {
+            return;
+        }
+        log.info("consumer disconnect：{}", reqId);
+        CommonCache.getConsumerInstancePool().removeFromInstancePool(String.valueOf(reqId));
     }
 }

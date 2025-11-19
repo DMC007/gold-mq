@@ -42,4 +42,24 @@ public class ConsumerInstancePool {
             log.info("add consumer instance in pool：{}", JSON.toJSONString(consumerInstance));
         }
     }
+
+    public void removeFromInstancePool(String reqId) {
+        synchronized (this) {
+            for (String topic : consumerInstanceMap.keySet()) {
+                List<ConsumerInstance> consumerInstances = consumerInstanceMap.get(topic);
+                //过滤出ReqId不相等的保留
+                List<ConsumerInstance> filterInstances = consumerInstances.stream().filter(instance -> !instance.getConsumerReqId().equals(reqId)).toList();
+                consumerInstanceMap.put(topic, filterInstances);
+            }
+            Map<String, Map<String, List<ConsumerInstance>>> consumerHoldMap = CommonCache.getConsumerHoldMap();
+            for (String topic : consumerHoldMap.keySet()) {
+                Map<String, List<ConsumerInstance>> consumetGroupInstanceMap = consumerHoldMap.get(topic);
+                for (String consumerGroup : consumetGroupInstanceMap.keySet()) {
+                    List<ConsumerInstance> consumerInstances = consumetGroupInstanceMap.get(consumerGroup);
+                    List<ConsumerInstance> filterInstances = consumerInstances.stream().filter(instance -> !instance.getConsumerReqId().equals(reqId)).toList();
+                    consumetGroupInstanceMap.put(consumerGroup, filterInstances);
+                }
+            }
+        }
+    }
 }
