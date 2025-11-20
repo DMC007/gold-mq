@@ -78,6 +78,13 @@ public class BrokerServerHandler extends SimpleChannelInboundHandler<TcpMsg> {
             consumerMsgAckEvent.setConsumerMsgAckReqDTO(consumerMsgAckReqDTO);
             consumerMsgAckEvent.setMsgId(consumerMsgAckReqDTO.getMsgId());
             event = consumerMsgAckEvent;
+        } else if (BrokerEventCode.CONSUME_LATER_MSG.getCode() == code) {
+            ConsumerMsgRetryReqDTO consumerMsgRetryReqDTO = JSON.parseObject(body, ConsumerMsgRetryReqDTO.class);
+            //定义事件
+            ConsumerMsgRetryEvent consumerMsgRetryEvent = new ConsumerMsgRetryEvent();
+            consumerMsgRetryEvent.setConsumerMsgRetryReqDTO(consumerMsgRetryReqDTO);
+            consumerMsgRetryEvent.setMsgId(consumerMsgRetryReqDTO.getMsgId());
+            event = consumerMsgRetryEvent;
         }
         if (event != null) {
             event.setChannelHandlerContext(ctx);
