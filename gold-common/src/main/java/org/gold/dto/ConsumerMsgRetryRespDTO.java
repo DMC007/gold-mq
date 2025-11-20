@@ -4,7 +4,7 @@ package org.gold.dto;
  * @author zhaoxun
  * @date 2025/11/19
  */
-public class ConsumeMsgRetryRespDTO extends BaseBrokerRemoteDTO {
+public class ConsumerMsgRetryRespDTO extends BaseBrokerRemoteDTO {
 
     /**
      * 1-成功 0-失败
