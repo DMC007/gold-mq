@@ -4,7 +4,7 @@ package org.gold.utils;
  * @author zhaoxun
  * @date 2025/10/21
  */
-public interface PutMessageLock {
+public interface MessageLock {
     /**
      * 加锁
      */

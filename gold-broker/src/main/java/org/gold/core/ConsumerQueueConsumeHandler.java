@@ -7,6 +7,8 @@ import org.gold.constants.BrokerConstants;
 import org.gold.dto.ConsumerMsgCommitLogDTO;
 import org.gold.model.*;
 import org.gold.utils.LogFileNameUtil;
+import org.gold.utils.MessageLock;
+import org.gold.utils.UnfairReentrantLock;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +23,8 @@ import java.util.Map;
 public class ConsumerQueueConsumeHandler {
 
     private static final Logger log = LogManager.getLogger(ConsumerQueueConsumeHandler.class);
+
+    public MessageLock ackMessageLock = new UnfairReentrantLock();
 
     /**
      * 读取当前最新N条consumerQueue的消息内容,并且返回commitLog原始数据
@@ -98,6 +102,8 @@ public class ConsumerQueueConsumeHandler {
      */
     public boolean ack(String topic, String consumerGroup, int queueId) {
         try {
+            //TODO 按目前的设计，这里其实可以优化锁粒度
+            ackMessageLock.lock();
             ConsumerQueueOffsetModel.OffsetTable offsetTable = CommonCache.getConsumerQueueOffsetModel().getOffsetTable();
             Map<String, ConsumerQueueOffsetModel.ConsumerGroupDetail> topicConsumerGroupDetail = offsetTable.getTopicConsumerGroupDetail();
             ConsumerQueueOffsetModel.ConsumerGroupDetail consumerGroupDetail = topicConsumerGroupDetail.get(topic);
@@ -144,6 +150,8 @@ public class ConsumerQueueConsumeHandler {
         } catch (Exception e) {
             log.error("[topic:{}, consumerGroup:{}, queueId:{}] ack error:{}", topic, consumerGroup, queueId, e.getMessage(), e);
             return false;
+        } finally {
+            ackMessageLock.unlock();
         }
     }
 }

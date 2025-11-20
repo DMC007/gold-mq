@@ -8,7 +8,7 @@ import org.gold.constants.BrokerConstants;
 import org.gold.model.GoldMqTopicModel;
 import org.gold.model.QueueModel;
 import org.gold.utils.LogFileNameUtil;
-import org.gold.utils.PutMessageLock;
+import org.gold.utils.MessageLock;
 import org.gold.utils.UnfairReentrantLock;
 
 import java.io.File;
@@ -36,7 +36,7 @@ public class ConsumerQueueMMapFileModel {
     private FileChannel fileChannel;
     private String topic;
     private Integer queueId;
-    private PutMessageLock putMessageLock;
+    private MessageLock putMessageLock;
 
     /**
      * 指定offset做文件的映射

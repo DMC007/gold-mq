@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author zhaoxun
  * @date 2025/10/21
  */
-public class UnfairReentrantLock implements PutMessageLock {
+public class UnfairReentrantLock implements MessageLock {
 
     private ReentrantLock lock = new ReentrantLock();
 

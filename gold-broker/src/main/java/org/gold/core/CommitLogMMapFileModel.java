@@ -10,7 +10,7 @@ import org.gold.dto.ConsumerMsgCommitLogDTO;
 import org.gold.dto.MessageDTO;
 import org.gold.model.*;
 import org.gold.utils.LogFileNameUtil;
-import org.gold.utils.PutMessageLock;
+import org.gold.utils.MessageLock;
 import org.gold.utils.UnfairReentrantLock;
 
 import java.io.File;
@@ -37,7 +37,7 @@ public class CommitLogMMapFileModel {
     private ByteBuffer readByteBuffer;
     private FileChannel fileChannel;
     private String topic;
-    private PutMessageLock putMessageLock;
+    private MessageLock putMessageLock;
 
     /**
      * 指定offset做文件的映射
