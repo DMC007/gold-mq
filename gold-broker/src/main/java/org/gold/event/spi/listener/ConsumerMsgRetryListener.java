@@ -51,7 +51,7 @@ public class ConsumerMsgRetryListener implements Listener<ConsumerMsgRetryEvent>
         for (ConsumerMsgRetryReqDetailDTO consumerMsgRetryReqDetailDTO : consumerMsgRetryReqDetailDTOList) {
             this.ackAndSendToRetryTopic(consumerMsgRetryReqDetailDTO, event);
         }
-        //TODO 响应
+        //响应
         consumerMsgRetryRespDTO.setAckStatus(AckStatus.SUCCESS.getCode());
         TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.CONSUME_MSG_RETRY_RESP.getCode(), JSON.toJSONBytes(consumerMsgRetryRespDTO));
         event.getChannelHandlerContext().writeAndFlush(tcpMsg);

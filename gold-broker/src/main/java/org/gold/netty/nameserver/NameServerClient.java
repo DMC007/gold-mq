@@ -51,6 +51,16 @@ public class NameServerClient {
         try {
             Map<String, Object> attrs = new HashMap<>();
             GlobalProperties globalProperties = CommonCache.getGlobalProperties();
+
+            String clusterMode = globalProperties.getBrokerClusterMode();
+            if (StringUtil.isNullOrEmpty(clusterMode)) {
+                attrs.put("role", "single");
+            } else if (BrokerClusterModeEnum.MASTER_SLAVE.getCode().equals(clusterMode)) {
+                //注册模式是集群架构
+                BrokerRegistryRoleEnum brokerRegistryEnum = BrokerRegistryRoleEnum.getByCode(globalProperties.getBrokerClusterRole());
+                attrs.put("role", brokerRegistryEnum.getCode());
+                attrs.put("group", globalProperties.getBrokerClusterGroup());
+            }
             //赋值属性
             reqDTO.setIp(Inet4Address.getLocalHost().getHostAddress());
             reqDTO.setPort(globalProperties.getBrokerPort());
@@ -58,8 +68,6 @@ public class NameServerClient {
             reqDTO.setPassword(globalProperties.getNameserverPassword());
             reqDTO.setRegistryType(RegistryTypeEnum.BROKER.getCode());
             reqDTO.setMsgId(UUID.randomUUID().toString());
-            //TODO 后期增加集群相关功能
-            attrs.put("role", "single");
             reqDTO.setAttrs(attrs);
             byte[] body = JSON.toJSONBytes(reqDTO);
             //发送注册事件消息给nameserver
