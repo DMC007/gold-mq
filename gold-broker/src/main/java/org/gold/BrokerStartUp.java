@@ -12,6 +12,7 @@ import org.gold.event.EventBus;
 import org.gold.model.GoldMqTopicModel;
 import org.gold.nett.broker.BrokerServer;
 import org.gold.slave.SlaveSyncService;
+import org.gold.timewheel.RecoverManager;
 
 import java.io.IOException;
 
@@ -29,6 +30,8 @@ public class BrokerStartUp {
     private static ConsumerQueueAppendHandler consumerQueueAppendHandler;
     private static ConsumerQueueConsumeHandler consumerQueueConsumeHandler;
     private static SlaveSyncService slaveSyncService;
+    private static RecoverManager recoverManager;
+
 
     /**
      * 启动
@@ -73,6 +76,13 @@ public class BrokerStartUp {
         CommonCache.setConsumerQueueConsumeHandler(consumerQueueConsumeHandler);
         CommonCache.setCommitLogAppendHandler(commitLogAppendHandler);
         CommonCache.setConsumerQueueAppendHandler(consumerQueueAppendHandler);
+        //恢复时间轮数据
+        recoverTimeWheelData();
+    }
+
+    private static void recoverTimeWheelData() {
+        recoverManager = new RecoverManager();
+        recoverManager.recoverDelayMessage();
     }
 
     /**
