@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.gold.coder.TcpMsg;
 import org.gold.common.BrokerServerSyncFutureManager;
+import org.gold.dto.ConsumerMsgRetryRespDTO;
 import org.gold.dto.SendMessageToBrokerResponseDTO;
 import org.gold.enums.BrokerResponseCode;
 import org.gold.event.EventBus;
@@ -32,7 +33,13 @@ public class BrokerRemoteRespHandler extends SimpleChannelInboundHandler<TcpMsg>
             SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = JSON.parseObject(body, SendMessageToBrokerResponseDTO.class);
             BrokerServerSyncFuture syncFuture = BrokerServerSyncFutureManager.getSyncFuture(sendMessageToBrokerResponseDTO.getMsgId());
             if (syncFuture != null) {
-                syncFuture.setResponse(sendMessageToBrokerResponseDTO);
+                syncFuture.setResponse(msg);
+            }
+        } else if (BrokerResponseCode.CONSUME_MSG_RETRY_RESP.getCode() == code) {
+            ConsumerMsgRetryRespDTO consumeMsgRetryRespDTO = JSON.parseObject(body, ConsumerMsgRetryRespDTO.class);
+            BrokerServerSyncFuture syncFuture = BrokerServerSyncFutureManager.getSyncFuture(consumeMsgRetryRespDTO.getMsgId());
+            if (syncFuture != null) {
+                syncFuture.setResponse(msg);
             }
         }
     }

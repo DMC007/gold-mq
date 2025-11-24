@@ -51,7 +51,7 @@ public class CommitLogAppendHandler {
         boolean isDelayMsg = messageDTO.getDelay() > 0;
         boolean isMasterNode = "master".equals(CommonCache.getGlobalProperties().getBrokerClusterRole());
         if (isClusterMode) {
-            //TODO 集群处理
+            // 集群处理
             if (isMasterNode) {
                 //先定义消息体，因为writeAndFlush是异步，若之后再定义，很可能同步很快对方响应过来，结果通过manager去获取需要的信息时为空，则response无法设置
                 BrokerServerSyncFuture brokerServerSyncFuture = new BrokerServerSyncFuture();

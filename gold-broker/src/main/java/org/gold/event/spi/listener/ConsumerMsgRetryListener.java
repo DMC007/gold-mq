@@ -14,8 +14,9 @@ import org.gold.event.Listener;
 import org.gold.event.model.ConsumerMsgRetryEvent;
 import org.gold.model.GoldMqTopicModel;
 import org.gold.rebalance.ConsumerInstance;
+import org.gold.timewheel.DelayMessageDTO;
+import org.gold.timewheel.SlotStoreTypeEnum;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
@@ -51,6 +52,9 @@ public class ConsumerMsgRetryListener implements Listener<ConsumerMsgRetryEvent>
             this.ackAndSendToRetryTopic(consumerMsgRetryReqDetailDTO, event);
         }
         //TODO 响应
+        consumerMsgRetryRespDTO.setAckStatus(AckStatus.SUCCESS.getCode());
+        TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.CONSUME_MSG_RETRY_RESP.getCode(), JSON.toJSONBytes(consumerMsgRetryRespDTO));
+        event.getChannelHandlerContext().writeAndFlush(tcpMsg);
     }
 
     private void ackAndSendToRetryTopic(ConsumerMsgRetryReqDetailDTO consumerMsgRetryReqDetailDTO, ConsumerMsgRetryEvent event) {
@@ -72,27 +76,40 @@ public class ConsumerMsgRetryListener implements Listener<ConsumerMsgRetryEvent>
         messageRetryDTO.setSourceCommitLogOffset(Math.toIntExact(commitLogOffset));
         messageRetryDTO.setSourceCommitLogSize(commitLogMsgLength);
         messageRetryDTO.setCurrentRetryTimes(consumerMsgRetryReqDetailDTO.getRetryTime());
-        Integer nextRetryTimeStep = RETRY_STEP.get(consumerMsgRetryReqDetailDTO.getRetryTime());
+        //定义commitLog提交对象，用于存储重试信息
         MessageDTO messageDTO = new MessageDTO();
         messageDTO.setMsgId(event.getMsgId());
         //塞入重试信息的dto对象的字节数组
         messageDTO.setBody(JSON.toJSONBytes(messageRetryDTO));
         messageDTO.setRetry(true);
-        if (nextRetryTimeStep == null) {
-            //超过重试次数上限，写入死信队列：dead_queue的commitLog文件
-            messageDTO.setTopic("dead_queue");
-        } else {
-            long nextRetryTime = System.currentTimeMillis() + (nextRetryTimeStep * 1000);
-            messageDTO.setTopic("retry");
-            messageRetryDTO.setNextRetryTime(nextRetryTime);
-        }
-
+        //获取对应的重试级别
+        Integer nextRetryTimeStep = RETRY_STEP.get(consumerMsgRetryReqDetailDTO.getRetryTime());
         try {
-            CommonCache.getCommitLogAppendHandler().appendMessage(messageDTO);
-        } catch (IOException e) {
+            if (nextRetryTimeStep == null) {
+                //超过重试次数上限，写入死信队列：dead_queue的commitLog文件
+                messageDTO.setTopic("dead_queue");
+                //写入死信队列topic的commitLog
+                CommonCache.getCommitLogAppendHandler().appendMessage(messageDTO);
+            } else {
+                //这里的retry队列，理解为SCHEDULE_TOPIC_XXXX主题，后续等时间到了再分发到对应重试主题队列[消费者启动的时候会启动自己的消费组，还有重试队列的消费组]
+                messageDTO.setTopic("retry");
+                //写入重试队列的commitLog
+                CommonCache.getCommitLogAppendHandler().appendMessage(messageDTO);
+                //定义重试级别
+                long nextRetryTime = System.currentTimeMillis() + (nextRetryTimeStep * 1000);
+                messageRetryDTO.setNextRetryTime(nextRetryTime);
+                //重试消息放入时间轮，实现消息延迟重试效果
+                DelayMessageDTO delayMessageDTO = new DelayMessageDTO();
+                delayMessageDTO.setData(messageRetryDTO);
+                delayMessageDTO.setSlotStoreType(SlotStoreTypeEnum.MESSAGE_RETRY_DTO);
+                delayMessageDTO.setDelay(nextRetryTimeStep);
+                delayMessageDTO.setNextExecuteTime(System.currentTimeMillis() + nextRetryTimeStep * 1000);
+                CommonCache.getTimeWheelModelManager().add(delayMessageDTO);
+            }
+        } catch (Exception e) {
+            log.error("retry message error", e);
             throw new RuntimeException(e);
         }
-        //TODO 时间轮实现
     }
 
     private void checkParam(ConsumerMsgRetryRespDTO consumerMsgRetryRespDTO,
