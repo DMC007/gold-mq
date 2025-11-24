@@ -76,8 +76,8 @@ public class TimeWheelModelManager {
         } else if (min > 0) {
             synchronized (minutesLock) {
                 int nextSlot = minutesTimeWheelModel.countNextSlot(min);
-                log.info("current minute slot:{}, next slot:{}", secondsTimeWheelModel.getCurrent(), nextSlot);
-                TimeWheelSlotListModel timeWheelSlotListModel = secondsTimeWheelModel.getTimeWheelSlotListModels()[nextSlot];
+                log.info("current minute slot:{}, next slot:{}", minutesTimeWheelModel.getCurrent(), nextSlot);
+                TimeWheelSlotListModel timeWheelSlotListModel = minutesTimeWheelModel.getTimeWheelSlotListModels()[nextSlot];
                 //每个槽位下面的列表里面的每个任务
                 TimeWheelSlotModel timeWheelSlotModel = new TimeWheelSlotModel();
                 timeWheelSlotModel.setData(delayMessageDTO.getData());
@@ -138,6 +138,7 @@ public class TimeWheelModelManager {
                 }
             }
             if (CollectionUtils.isNotEmpty(minutesTimeWheelModelList)) {
+                log.info("minutes msg:{}", minutesTimeWheelModelList.getFirst().getData());
                 //分钟整 直接执行业务逻辑
                 TimeWheelEvent timeWheelEvent = new TimeWheelEvent();
                 timeWheelEvent.setTimeWheelSlotModelList(minutesTimeWheelModelList);
@@ -160,6 +161,7 @@ public class TimeWheelModelManager {
             TimeWheelSlotListModel timeWheelSlotListModel = secondsTimeWheelModel.getTimeWheelSlotListModels()[current];
             List<TimeWheelSlotModel> timeWheelSlotModelList = timeWheelSlotListModel.getTimeWheelSlotModelList();
             if (CollectionUtils.isNotEmpty(timeWheelSlotModelList)) {
+                log.info("seconds msg:{}", timeWheelSlotModelList.getFirst().getData());
                 TimeWheelEvent timeWheelEvent = new TimeWheelEvent();
                 timeWheelEvent.setTimeWheelSlotModelList(timeWheelSlotModelList);
                 eventBus.publish(timeWheelEvent);
