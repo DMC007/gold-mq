@@ -8,6 +8,7 @@ import org.gold.core.CommitLogAppendHandler;
 import org.gold.core.ConsumerQueueAppendHandler;
 import org.gold.core.ConsumerQueueConsumeHandler;
 import org.gold.enums.BrokerClusterModeEnum;
+import org.gold.event.EventBus;
 import org.gold.model.GoldMqTopicModel;
 import org.gold.nett.broker.BrokerServer;
 import org.gold.slave.SlaveSyncService;
@@ -65,7 +66,13 @@ public class BrokerStartUp {
             commitLogAppendHandler.prepareMMapLoading(topicName);
             consumerQueueAppendHandler.prepareConsumerQueue(topicName);
         }
-        //TODO 时间轮相关的后期开发
+        //启动时间轮
+        CommonCache.getTimeWheelModelManager().init(new EventBus("time-wheel-event-bus"));
+        CommonCache.getTimeWheelModelManager().doScanTask();
+        //设置缓存对象
+        CommonCache.setConsumerQueueConsumeHandler(consumerQueueConsumeHandler);
+        CommonCache.setCommitLogAppendHandler(commitLogAppendHandler);
+        CommonCache.setConsumerQueueAppendHandler(consumerQueueAppendHandler);
     }
 
     /**
