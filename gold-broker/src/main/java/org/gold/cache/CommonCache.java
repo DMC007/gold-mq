@@ -10,6 +10,7 @@ import org.gold.netty.nameserver.NameServerClient;
 import org.gold.rebalance.ConsumerInstance;
 import org.gold.rebalance.ConsumerInstancePool;
 import org.gold.slave.SlaveSyncService;
+import org.gold.timewheel.TimeWheelModelManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,6 +49,8 @@ public class CommonCache {
      * value: consumerInstanceList
      */
     private static Map<String, Map<String, List<ConsumerInstance>>> consumerHoldMap = new ConcurrentHashMap<>();
+
+    private static TimeWheelModelManager timeWheelModelManager = new TimeWheelModelManager();
 
     public static GlobalProperties getGlobalProperties() {
         return globalProperties;
@@ -163,5 +166,13 @@ public class CommonCache {
 
     public static void setConsumerHoldMap(Map<String, Map<String, List<ConsumerInstance>>> consumerHoldMap) {
         CommonCache.consumerHoldMap = consumerHoldMap;
+    }
+
+    public static TimeWheelModelManager getTimeWheelModelManager() {
+        return timeWheelModelManager;
+    }
+
+    public static void setTimeWheelModelManager(TimeWheelModelManager timeWheelModelManager) {
+        CommonCache.timeWheelModelManager = timeWheelModelManager;
     }
 }

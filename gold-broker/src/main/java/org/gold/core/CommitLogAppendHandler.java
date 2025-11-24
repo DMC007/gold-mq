@@ -12,7 +12,7 @@ import org.gold.dto.MessageDTO;
 import org.gold.dto.SendMessageToBrokerResponseDTO;
 import org.gold.dto.SlaveSyncRespDTO;
 import org.gold.enums.*;
-import org.gold.event.model.PushMsgEvent;
+import org.gold.event.model.Event;
 import org.gold.remote.BrokerServerSyncFuture;
 
 import java.io.IOException;
@@ -34,7 +34,7 @@ public class CommitLogAppendHandler {
         CommonCache.getCommitLogMMapFileModelManager().put(topicName, commitLogMMapFileModel);
     }
 
-    //TODO 消息追加V1
+    //消息追加V1
     public void appendMessage(MessageDTO messageDTO) throws IOException {
         CommitLogMMapFileModel commitLogMMapFileModel = CommonCache.getCommitLogMMapFileModelManager().get(messageDTO.getTopic());
         if (commitLogMMapFileModel == null) {
@@ -43,7 +43,7 @@ public class CommitLogAppendHandler {
         commitLogMMapFileModel.writeContent(messageDTO, true);
     }
 
-    public void appendMessage(MessageDTO messageDTO, PushMsgEvent event) throws IOException {
+    public void appendMessage(MessageDTO messageDTO, Event event) throws IOException {
         CommonCache.getCommitLogAppendHandler().appendMessage(messageDTO);
         int sendWay = messageDTO.getSendWay();
         boolean isAsyncSend = MessageSendWay.ASYNC.getCode() == sendWay;

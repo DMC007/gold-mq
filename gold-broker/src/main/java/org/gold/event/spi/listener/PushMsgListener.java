@@ -1,9 +1,18 @@
 package org.gold.event.spi.listener;
 
+import com.alibaba.fastjson2.JSON;
 import org.gold.cache.CommonCache;
+import org.gold.coder.TcpMsg;
 import org.gold.dto.MessageDTO;
+import org.gold.dto.SendMessageToBrokerResponseDTO;
+import org.gold.enums.BrokerResponseCode;
+import org.gold.enums.MessageSendWay;
+import org.gold.enums.SendMessageToBrokerResponseStatus;
 import org.gold.event.Listener;
 import org.gold.event.model.PushMsgEvent;
+import org.gold.timewheel.DelayMessageDTO;
+import org.gold.timewheel.SlotStoreTypeEnum;
+import org.gold.utils.AssertUtils;
 
 import java.io.IOException;
 
@@ -16,15 +25,49 @@ public class PushMsgListener implements Listener<PushMsgEvent> {
     public void onReceive(PushMsgEvent event) throws Exception {
         //将消息写入commitLog
         MessageDTO messageDTO = event.getMessageDTO();
-        //TODO 是否是延迟消息
+        //是否是延迟消息
         boolean isDelay = messageDTO.getDelay() > 0;
         //TODO 是否是事务消息
         if (isDelay) {
-            //TODO 延迟消息处理
+            //延迟消息处理
+            this.appendDelayMsgHandler(messageDTO, event);
         } else {
             //普通消息处理[event里面的ctx需要用来做响应]
             this.appendDefaultMsgHandler(messageDTO, event);
         }
+    }
+
+    /**
+     * 延迟消息追加写入
+     *
+     * @param messageDTO 消息体
+     * @param event      事件
+     */
+    private void appendDelayMsgHandler(MessageDTO messageDTO, PushMsgEvent event) throws IOException {
+        int delay = messageDTO.getDelay();
+        //延迟时间不能大于1小时
+        AssertUtils.isTrue(delay <= 3600, "too large delay seconds");
+        DelayMessageDTO delayMessageDTO = new DelayMessageDTO();
+        delayMessageDTO.setData(messageDTO);
+        delayMessageDTO.setDelay(delay);
+        delayMessageDTO.setSlotStoreType(SlotStoreTypeEnum.DELAY_MESSAGE_DTO);
+        delayMessageDTO.setNextExecuteTime(System.currentTimeMillis() + delay * 1000L);
+        //写入延迟消息到时间轮中
+        CommonCache.getTimeWheelModelManager().add(delayMessageDTO);
+        //持久化
+        MessageDTO delayMessage = new MessageDTO();
+        delayMessage.setBody(JSON.toJSONBytes(delayMessageDTO));
+        delayMessage.setTopic("delay_queue");
+        delayMessage.setQueueId(0);
+        delayMessage.setSendWay(MessageSendWay.ASYNC.getCode());
+        CommonCache.getCommitLogAppendHandler().appendMessage(delayMessage, event);
+        //响应客户端
+        SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = new SendMessageToBrokerResponseDTO();
+        sendMessageToBrokerResponseDTO.setMsgId(messageDTO.getMsgId());
+        sendMessageToBrokerResponseDTO.setStatus(SendMessageToBrokerResponseStatus.SUCCESS.getCode());
+        sendMessageToBrokerResponseDTO.setDesc("send delay message success");
+        TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.SEND_MSG_RESP.getCode(), JSON.toJSONBytes(sendMessageToBrokerResponseDTO));
+        event.getChannelHandlerContext().writeAndFlush(tcpMsg);
     }
 
     private void appendDefaultMsgHandler(MessageDTO messageDTO, PushMsgEvent event) throws IOException {
