@@ -5,6 +5,7 @@ import org.gold.config.GlobalProperties;
 import org.gold.core.*;
 import org.gold.model.ConsumerQueueOffsetModel;
 import org.gold.model.GoldMqTopicModel;
+import org.gold.model.TxMessageAckModel;
 import org.gold.netty.nameserver.HeartBeatTaskManager;
 import org.gold.netty.nameserver.NameServerClient;
 import org.gold.rebalance.ConsumerInstance;
@@ -51,6 +52,8 @@ public class CommonCache {
     private static Map<String, Map<String, List<ConsumerInstance>>> consumerHoldMap = new ConcurrentHashMap<>();
 
     private static TimeWheelModelManager timeWheelModelManager = new TimeWheelModelManager();
+
+    private static Map<String, TxMessageAckModel> txMessageAckModelMap = new ConcurrentHashMap<>();
 
     public static GlobalProperties getGlobalProperties() {
         return globalProperties;
@@ -174,5 +177,13 @@ public class CommonCache {
 
     public static void setTimeWheelModelManager(TimeWheelModelManager timeWheelModelManager) {
         CommonCache.timeWheelModelManager = timeWheelModelManager;
+    }
+
+    public static Map<String, TxMessageAckModel> getTxMessageAckModelMap() {
+        return txMessageAckModelMap;
+    }
+
+    public static void setTxMessageAckModelMap(Map<String, TxMessageAckModel> txMessageAckModelMap) {
+        CommonCache.txMessageAckModelMap = txMessageAckModelMap;
     }
 }

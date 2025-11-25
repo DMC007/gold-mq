@@ -2,6 +2,7 @@ package org.gold.timewheel;
 
 import org.gold.dto.MessageDTO;
 import org.gold.dto.MessageRetryDTO;
+import org.gold.dto.TxMessageDTO;
 
 /**
  * @author zhaoxun
@@ -10,7 +11,7 @@ import org.gold.dto.MessageRetryDTO;
 public enum SlotStoreTypeEnum {
     MESSAGE_RETRY_DTO(MessageRetryDTO.class),
     DELAY_MESSAGE_DTO(MessageDTO.class),
-    //TODO 事务消息
+    TX_MESSAGE_DTO(TxMessageDTO.class),
     ;
     Class<?> clazz;
 

@@ -24,7 +24,14 @@ public class MessageDTO {
     //延迟的时间 秒单位
     private int delay;
     private String producerId;
-    //TODO 缺少事务消息相关的属性, 后期加上
+    /**
+     * @see org.gold.enums.TxMessageFlagEnum
+     */
+    private int txFlag = -1;
+    /**
+     * @see org.gold.enums.LocalTransactionState
+     */
+    private int localTxState = -1;
 
     public String getTopic() {
         return topic;
@@ -96,5 +103,21 @@ public class MessageDTO {
 
     public void setProducerId(String producerId) {
         this.producerId = producerId;
+    }
+
+    public int getTxFlag() {
+        return txFlag;
+    }
+
+    public void setTxFlag(int txFlag) {
+        this.txFlag = txFlag;
+    }
+
+    public int getLocalTxState() {
+        return localTxState;
+    }
+
+    public void setLocalTxState(int localTxState) {
+        this.localTxState = localTxState;
     }
 }

@@ -10,6 +10,7 @@ import org.gold.event.EventBus;
 import org.gold.netty.BrokerRemoteRespHandler;
 import org.gold.remote.BrokerNettyRemoteClient;
 import org.gold.remote.NameServerNettyRemoteClient;
+import org.gold.transaction.TransactionListener;
 import org.gold.utils.AssertUtils;
 
 import java.util.ArrayList;
@@ -38,7 +39,8 @@ public class DefaultProducerImpl implements Producer {
     private String brokerRole = "single";
     private List<String> brokerAddressList;
     private List<String> masterAddressList;
-    //TODO 事务相关属性
+    //事务相关属性
+    private TransactionListener transactionListener;
     private String producerId;
     private NameServerNettyRemoteClient nameServerNettyRemoteClient;
     private Map<String, BrokerNettyRemoteClient> brokerNettyRemoteClientMap = new ConcurrentHashMap<>();
@@ -100,7 +102,44 @@ public class DefaultProducerImpl implements Producer {
 
     @Override
     public SendResult sendTxMessage(MessageDTO message) {
-        return null;
+        AssertUtils.isNotNull(message, "message can not be null");
+        AssertUtils.isNotNull(transactionListener, "transactionListener can not be null");
+        String msgId = UUID.randomUUID().toString();
+        message.setTxFlag(TxMessageFlagEnum.HALF_MSG.getCode());
+        message.setMsgId(msgId);
+        message.setProducerId(producerId);
+        message.setSendWay(MessageSendWay.SYNC.getCode());
+        TcpMsg tcpMsg = new TcpMsg(BrokerEventCode.PUSH_MSG.getCode(), JSON.toJSONBytes(message));
+        BrokerNettyRemoteClient remoteClient = this.getBrokerNettyRemoteClient();
+        TcpMsg tcpMsgRes = remoteClient.sendSyncMsg(tcpMsg, msgId);
+        boolean isHalfMsgSendSuccess = tcpMsgRes != null && tcpMsgRes.getCode() == BrokerResponseCode.HALF_MSG_SEND_SUCCESS.getCode();
+        if (!isHalfMsgSendSuccess) {
+            log.error("send half message fail");
+            throw new RuntimeException("send half message fail");
+        }
+        //发送半消息成功后，执行本地事务代码
+        LocalTransactionState localTransactionState = transactionListener.executeLocalTransaction(message);
+        AssertUtils.isNotNull(localTransactionState, "localTransactionState can not be null");
+        //设置本地事务执行后的状态
+        message.setLocalTxState(localTransactionState.getCode());
+        if (LocalTransactionState.COMMIT.equals(localTransactionState)) {
+            message.setTxFlag(TxMessageFlagEnum.REMAIN_HALF_ACK.getCode());
+            TcpMsg remainHalfAckMsg = new TcpMsg(BrokerEventCode.PUSH_MSG.getCode(), JSON.toJSONBytes(message));
+            TcpMsg remainHalfAckMsgRes = remoteClient.sendSyncMsg(remainHalfAckMsg, msgId);
+            log.info("remain half ack message res: {}", JSON.toJSONString(remainHalfAckMsgRes));
+        } else if (LocalTransactionState.ROLLBACK.equals(localTransactionState)) {
+            //通知到broker本地事务消息执行失败，不然broker会一直回调客户端查询状态，会有额外性能损耗
+            message.setTxFlag(TxMessageFlagEnum.REMAIN_HALF_ACK.getCode());
+            TcpMsg rollbackMsg = new TcpMsg(BrokerEventCode.PUSH_MSG.getCode(), JSON.toJSONBytes(message));
+            TcpMsg rollbackMsgRes = remoteClient.sendSyncMsg(rollbackMsg, msgId);
+            log.info("rollback message res: {}", JSON.toJSONString(rollbackMsgRes));
+        } else if (LocalTransactionState.UNKNOW.equals(localTransactionState)) {
+            //TODO 等待broker回调查询状态判断
+        }
+        //本地事务执行环节
+        SendResult sendResult = new SendResult();
+        sendResult.setSendStatus(SendStatus.SUCCESS);
+        return sendResult;
     }
 
     private void startHeartBeatTask() {
@@ -274,6 +313,14 @@ public class DefaultProducerImpl implements Producer {
 
     public void setMasterAddressList(List<String> masterAddressList) {
         this.masterAddressList = masterAddressList;
+    }
+
+    public TransactionListener getTransactionListener() {
+        return transactionListener;
+    }
+
+    public void setTransactionListener(TransactionListener transactionListener) {
+        this.transactionListener = transactionListener;
     }
 
     public String getProducerId() {

@@ -1,16 +1,20 @@
 package org.gold.event.spi.listener;
 
 import com.alibaba.fastjson2.JSON;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.gold.cache.CommonCache;
+import org.gold.coder.TcpMsg;
 import org.gold.core.CommitLogMMapFileModel;
-import org.gold.dto.ConsumerMsgCommitLogDTO;
-import org.gold.dto.MessageDTO;
-import org.gold.dto.MessageRetryDTO;
+import org.gold.dto.*;
+import org.gold.enums.BrokerResponseCode;
 import org.gold.event.Listener;
 import org.gold.event.model.TimeWheelEvent;
+import org.gold.model.TxMessageAckModel;
+import org.gold.timewheel.DelayMessageDTO;
 import org.gold.timewheel.SlotStoreTypeEnum;
 import org.gold.timewheel.TimeWheelSlotModel;
 
@@ -43,6 +47,37 @@ public class TimeWheelListener implements Listener<TimeWheelEvent> {
                 log.info("delay message rewrite into commitLog:{}", JSON.toJSONString(messageDTO));
                 //延迟消息重新写入commitLog，注意这里是message的topic是业务消息的topic,
                 CommonCache.getCommitLogAppendHandler().appendMessage(messageDTO, event);
+            } else if (SlotStoreTypeEnum.TX_MESSAGE_DTO.getClazz().equals(timeWheelSlotModel.getStoreType())) {
+                TxMessageDTO txMessageDTO = (TxMessageDTO) timeWheelSlotModel.getData();
+                //时间轮到期，检测ack缓存是否还有未提交剩余消息的ack记录
+                TxMessageAckModel txMessageAckModel = CommonCache.getTxMessageAckModelMap().get(txMessageDTO.getMsgId());
+                if (txMessageAckModel == null) {
+                    //事务消息已经被ack
+                    log.info("tx message ack model is null, msgId:{}", txMessageDTO.getMsgId());
+                    continue;
+                }
+                //定时回调客户端
+                TxMessageCallbackReqDTO txMessageCallbackReqDTO = new TxMessageCallbackReqDTO();
+                txMessageCallbackReqDTO.setMessageDTO(txMessageAckModel.getMessageDTO());
+                TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.TX_CALLBACK_MSG.getCode(), JSON.toJSONBytes(txMessageCallbackReqDTO));
+                txMessageAckModel.getCtx().writeAndFlush(tcpMsg).addListener(new ChannelFutureListener() {
+                    @Override
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        if (future.isSuccess()) {
+                            log.info("tx message callback success");
+                            //重新投递到时间轮[生产者收到回调请求响应后broker会删除txMessageAckModel, 就不会重复回调]
+                            DelayMessageDTO delayMessageDTO = new DelayMessageDTO();
+                            delayMessageDTO.setData(txMessageDTO);
+                            delayMessageDTO.setSlotStoreType(SlotStoreTypeEnum.TX_MESSAGE_DTO);
+                            delayMessageDTO.setNextExecuteTime(System.currentTimeMillis() + 3 * 1000L);
+                            delayMessageDTO.setDelay(3);
+                            CommonCache.getTimeWheelModelManager().add(delayMessageDTO);
+                        } else {
+                            //客户端异常
+                            log.error("tx message callback error", future.cause());
+                        }
+                    }
+                });
             }
         }
     }

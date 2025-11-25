@@ -5,11 +5,14 @@ import org.gold.cache.CommonCache;
 import org.gold.coder.TcpMsg;
 import org.gold.dto.MessageDTO;
 import org.gold.dto.SendMessageToBrokerResponseDTO;
+import org.gold.dto.TxMessageDTO;
 import org.gold.enums.BrokerResponseCode;
 import org.gold.enums.MessageSendWay;
 import org.gold.enums.SendMessageToBrokerResponseStatus;
+import org.gold.enums.TxMessageFlagEnum;
 import org.gold.event.Listener;
 import org.gold.event.model.PushMsgEvent;
+import org.gold.model.TxMessageAckModel;
 import org.gold.timewheel.DelayMessageDTO;
 import org.gold.timewheel.SlotStoreTypeEnum;
 import org.gold.utils.AssertUtils;
@@ -28,13 +31,42 @@ public class PushMsgListener implements Listener<PushMsgEvent> {
         //是否是延迟消息
         boolean isDelay = messageDTO.getDelay() > 0;
         //TODO 是否是事务消息
+        boolean isHalfMsg = messageDTO.getTxFlag() == TxMessageFlagEnum.HALF_MSG.getCode();
         if (isDelay) {
             //延迟消息处理
             this.appendDelayMsgHandler(messageDTO, event);
+        } else if (isHalfMsg) {
+            //事务消息处理
+            this.halfMsgHandler(messageDTO, event);
         } else {
             //普通消息处理[event里面的ctx需要用来做响应]
             this.appendDefaultMsgHandler(messageDTO, event);
         }
+    }
+
+    private void halfMsgHandler(MessageDTO messageDTO, PushMsgEvent event) {
+        TxMessageAckModel txMessageAckModel = new TxMessageAckModel();
+        txMessageAckModel.setMessageDTO(messageDTO);
+        txMessageAckModel.setCtx(event.getChannelHandlerContext());
+        txMessageAckModel.setFirstSendTime(System.currentTimeMillis());
+        CommonCache.getTxMessageAckModelMap().put(messageDTO.getMsgId(), txMessageAckModel);
+        //时间轮推送
+        TxMessageDTO txMessageDTO = new TxMessageDTO();
+        txMessageDTO.setMsgId(messageDTO.getMsgId());
+        long currentTime = System.currentTimeMillis();
+        DelayMessageDTO delayMessageDTO = new DelayMessageDTO();
+        delayMessageDTO.setData(txMessageDTO);
+        delayMessageDTO.setSlotStoreType(SlotStoreTypeEnum.TX_MESSAGE_DTO);
+        delayMessageDTO.setNextExecuteTime(currentTime + 3 * 1000L);
+        delayMessageDTO.setDelay(3);
+        CommonCache.getTimeWheelModelManager().add(delayMessageDTO);
+        //通知客户端写入事务消息成功
+        SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = new SendMessageToBrokerResponseDTO();
+        sendMessageToBrokerResponseDTO.setMsgId(messageDTO.getMsgId());
+        sendMessageToBrokerResponseDTO.setStatus(SendMessageToBrokerResponseStatus.SUCCESS.getCode());
+        sendMessageToBrokerResponseDTO.setDesc("send tx half message success");
+        TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.HALF_MSG_SEND_SUCCESS.getCode(), JSON.toJSONBytes(sendMessageToBrokerResponseDTO));
+        event.getChannelHandlerContext().writeAndFlush(tcpMsg);
     }
 
     /**
