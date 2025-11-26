@@ -4,10 +4,14 @@ import com.alibaba.fastjson2.JSON;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.gold.async.event.TxMessageCallBackEvent;
 import org.gold.coder.TcpMsg;
 import org.gold.common.BrokerServerSyncFutureManager;
 import org.gold.dto.ConsumerMsgRetryRespDTO;
 import org.gold.dto.SendMessageToBrokerResponseDTO;
+import org.gold.dto.TxMessageCallbackReqDTO;
 import org.gold.enums.BrokerResponseCode;
 import org.gold.event.EventBus;
 import org.gold.remote.BrokerServerSyncFuture;
@@ -18,6 +22,8 @@ import org.gold.remote.BrokerServerSyncFuture;
  */
 @ChannelHandler.Sharable
 public class BrokerRemoteRespHandler extends SimpleChannelInboundHandler<TcpMsg> {
+
+    private static final Logger log = LogManager.getLogger(BrokerRemoteRespHandler.class);
 
     private EventBus eventBus;
 
@@ -38,6 +44,20 @@ public class BrokerRemoteRespHandler extends SimpleChannelInboundHandler<TcpMsg>
         } else if (BrokerResponseCode.CONSUME_MSG_RETRY_RESP.getCode() == code) {
             ConsumerMsgRetryRespDTO consumeMsgRetryRespDTO = JSON.parseObject(body, ConsumerMsgRetryRespDTO.class);
             BrokerServerSyncFuture syncFuture = BrokerServerSyncFutureManager.getSyncFuture(consumeMsgRetryRespDTO.getMsgId());
+            if (syncFuture != null) {
+                syncFuture.setResponse(msg);
+            }
+        } else if (BrokerResponseCode.TX_CALLBACK_MSG.getCode() == code) {
+            log.info("Received tx message callback signal");
+            TxMessageCallbackReqDTO txMessageCallbackReqDTO = JSON.parseObject(body, TxMessageCallbackReqDTO.class);
+            TxMessageCallBackEvent txMessageCallBackEvent = new TxMessageCallBackEvent();
+            txMessageCallBackEvent.setTxMessageCallbackReqDTO(txMessageCallbackReqDTO);
+            txMessageCallBackEvent.setChannelHandlerContext(ctx);
+            txMessageCallBackEvent.setMsgId(txMessageCallbackReqDTO.getMessageDTO().getMsgId());
+            eventBus.publish(txMessageCallBackEvent);
+        } else if (BrokerResponseCode.REMAIN_ACK_MSG_SEND_SUCCESS.getCode() == code) {
+            SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = JSON.parseObject(body, SendMessageToBrokerResponseDTO.class);
+            BrokerServerSyncFuture syncFuture = BrokerServerSyncFutureManager.getSyncFuture(sendMessageToBrokerResponseDTO.getMsgId());
             if (syncFuture != null) {
                 syncFuture.setResponse(msg);
             }

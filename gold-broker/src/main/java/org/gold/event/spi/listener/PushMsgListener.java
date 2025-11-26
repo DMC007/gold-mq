@@ -1,15 +1,14 @@
 package org.gold.event.spi.listener;
 
 import com.alibaba.fastjson2.JSON;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.gold.cache.CommonCache;
 import org.gold.coder.TcpMsg;
 import org.gold.dto.MessageDTO;
 import org.gold.dto.SendMessageToBrokerResponseDTO;
 import org.gold.dto.TxMessageDTO;
-import org.gold.enums.BrokerResponseCode;
-import org.gold.enums.MessageSendWay;
-import org.gold.enums.SendMessageToBrokerResponseStatus;
-import org.gold.enums.TxMessageFlagEnum;
+import org.gold.enums.*;
 import org.gold.event.Listener;
 import org.gold.event.model.PushMsgEvent;
 import org.gold.model.TxMessageAckModel;
@@ -24,24 +23,50 @@ import java.io.IOException;
  * @date 2025/11/10
  */
 public class PushMsgListener implements Listener<PushMsgEvent> {
+
+    private static final Logger log = LogManager.getLogger(PushMsgListener.class);
+
     @Override
     public void onReceive(PushMsgEvent event) throws Exception {
         //将消息写入commitLog
         MessageDTO messageDTO = event.getMessageDTO();
         //是否是延迟消息
         boolean isDelay = messageDTO.getDelay() > 0;
-        //TODO 是否是事务消息
+        //是否是事务消息
         boolean isHalfMsg = messageDTO.getTxFlag() == TxMessageFlagEnum.HALF_MSG.getCode();
+        //是否剩余半消息ack
+        boolean isRemainHalfAck = messageDTO.getTxFlag() == TxMessageFlagEnum.REMAIN_HALF_ACK.getCode();
         if (isDelay) {
             //延迟消息处理
             this.appendDelayMsgHandler(messageDTO, event);
         } else if (isHalfMsg) {
             //事务消息处理
             this.halfMsgHandler(messageDTO, event);
+        } else if (isRemainHalfAck) {
+            this.remainHalfMsgAckHandler(messageDTO, event);
         } else {
             //普通消息处理[event里面的ctx需要用来做响应]
             this.appendDefaultMsgHandler(messageDTO, event);
         }
+    }
+
+    private void remainHalfMsgAckHandler(MessageDTO messageDTO, PushMsgEvent event) throws IOException {
+        LocalTransactionState localTransactionState = LocalTransactionState.getByCode(messageDTO.getLocalTxState());
+        if (localTransactionState == LocalTransactionState.COMMIT) {
+            CommonCache.getTxMessageAckModelMap().remove(messageDTO.getMsgId());
+            CommonCache.getCommitLogAppendHandler().appendMessage(messageDTO);
+            log.info("commit tx msg, msgId: {}", messageDTO.getMsgId());
+        } else if (localTransactionState == LocalTransactionState.ROLLBACK) {
+            CommonCache.getTxMessageAckModelMap().remove(messageDTO.getMsgId());
+            log.info("rollback tx msg, msgId: {}", messageDTO.getMsgId());
+        }
+        //响应客户端事务消息成功
+        SendMessageToBrokerResponseDTO sendMessageToBrokerResponseDTO = new SendMessageToBrokerResponseDTO();
+        sendMessageToBrokerResponseDTO.setMsgId(messageDTO.getMsgId());
+        sendMessageToBrokerResponseDTO.setStatus(SendMessageToBrokerResponseStatus.SUCCESS.getCode());
+        sendMessageToBrokerResponseDTO.setDesc("send tx msg success");
+        TcpMsg tcpMsg = new TcpMsg(BrokerResponseCode.REMAIN_ACK_MSG_SEND_SUCCESS.getCode(), JSON.toJSONBytes(sendMessageToBrokerResponseDTO));
+        event.getChannelHandlerContext().writeAndFlush(tcpMsg);
     }
 
     private void halfMsgHandler(MessageDTO messageDTO, PushMsgEvent event) {
