@@ -19,7 +19,7 @@ public enum ReplicationRoleEnum {
         this.desc = desc;
     }
 
-    public static ReplicationRoleEnum of(String code) {
+    public static ReplicationRoleEnum getByCode(String code) {
         for (ReplicationRoleEnum value : values()) {
             if (value.getCode().equals(code)) {
                 return value;

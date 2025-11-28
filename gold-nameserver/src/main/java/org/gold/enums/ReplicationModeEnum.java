@@ -23,7 +23,7 @@ public enum ReplicationModeEnum {
         return desc;
     }
 
-    public static ReplicationModeEnum of(String code) {
+    public static ReplicationModeEnum getByCode(String code) {
         for (ReplicationModeEnum value : values()) {
             if (value.getCode().equals(code)) {
                 return value;

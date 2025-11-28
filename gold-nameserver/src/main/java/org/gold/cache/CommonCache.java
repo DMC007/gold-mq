@@ -1,5 +1,6 @@
 package org.gold.cache;
 
+import io.netty.channel.Channel;
 import org.gold.config.NameserverProperties;
 import org.gold.config.PropertiesLoader;
 import org.gold.store.ServiceInstanceManager;
@@ -14,6 +15,7 @@ public class CommonCache {
     private static PropertiesLoader propertiesLoader = new PropertiesLoader();
     private static NameserverProperties nameserverProperties = new NameserverProperties();
     private static ServiceInstanceManager serviceInstanceManager = new ServiceInstanceManager();
+    private static Channel connectNodeChannel = null;
 
     public static NameserverProperties getNameserverProperties() {
         return nameserverProperties;
@@ -37,5 +39,13 @@ public class CommonCache {
 
     public static void setServiceInstanceManager(ServiceInstanceManager serviceInstanceManager) {
         CommonCache.serviceInstanceManager = serviceInstanceManager;
+    }
+
+    public static Channel getConnectNodeChannel() {
+        return connectNodeChannel;
+    }
+
+    public static void setConnectNodeChannel(Channel connectNodeChannel) {
+        CommonCache.connectNodeChannel = connectNodeChannel;
     }
 }

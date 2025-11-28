@@ -16,8 +16,9 @@ public class NameserverProperties {
     private String nameserverUser;
     private String nameserverPwd;
     private Integer nameserverPort;
-    //TODO 还有其他属性后续添加
-
+    private String replicationMode;
+    private TraceReplicationProperties traceReplicationProperties;
+    private MasterSlaveReplicationProperties masterSlaveReplicationProperties;
 
     public String getNameserverUser() {
         return nameserverUser;
@@ -41,6 +42,30 @@ public class NameserverProperties {
 
     public void setNameserverPort(Integer nameserverPort) {
         this.nameserverPort = nameserverPort;
+    }
+
+    public String getReplicationMode() {
+        return replicationMode;
+    }
+
+    public void setReplicationMode(String replicationMode) {
+        this.replicationMode = replicationMode;
+    }
+
+    public TraceReplicationProperties getTraceReplicationProperties() {
+        return traceReplicationProperties;
+    }
+
+    public void setTraceReplicationProperties(TraceReplicationProperties traceReplicationProperties) {
+        this.traceReplicationProperties = traceReplicationProperties;
+    }
+
+    public MasterSlaveReplicationProperties getMasterSlaveReplicationProperties() {
+        return masterSlaveReplicationProperties;
+    }
+
+    public void setMasterSlaveReplicationProperties(MasterSlaveReplicationProperties masterSlaveReplicationProperties) {
+        this.masterSlaveReplicationProperties = masterSlaveReplicationProperties;
     }
 
     public void print() {
