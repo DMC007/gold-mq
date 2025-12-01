@@ -17,6 +17,8 @@ import org.gold.event.model.ReplicationMsgEvent;
 import org.gold.store.ServiceInstance;
 import org.gold.utils.NameserverUtils;
 
+import java.util.UUID;
+
 /**
  * @author zhaoxun
  * @date 2025/11/5
@@ -60,6 +62,7 @@ public class RegistryListener implements Listener<RegistryEvent> {
             return;
         }
         ReplicationMsgEvent replicationMsgEvent = new ReplicationMsgEvent();
+        replicationMsgEvent.setMsgId(UUID.randomUUID().toString());
         replicationMsgEvent.setServiceInstance(serviceInstance);
         replicationMsgEvent.setChannelHandlerContext(ctx);
         replicationMsgEvent.setType(ReplicationMsgTypeEnum.REGISTRY.getCode());
