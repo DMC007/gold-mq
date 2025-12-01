@@ -44,6 +44,7 @@ public class NameServerStartUp {
                 replicationTask = new MasterReplicationMsgSendTask("master-replication-msg-send-task");
                 replicationTask.startTaskAsync();
             } else if (roleEnum == ReplicationRoleEnum.SLAVE) {
+                //开启心跳任务，发送给主节点
                 replicationTask = new SlaveReplicationHeartBeatTask("slave-replication-heart-beat-send-task");
                 replicationTask.startTaskAsync();
             }
