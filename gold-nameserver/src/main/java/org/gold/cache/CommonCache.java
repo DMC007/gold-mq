@@ -31,6 +31,8 @@ public class CommonCache {
     private static Map<String, NodeAckDTO> nodeAckMap = new ConcurrentHashMap<>();
     private static Map<String, SlaveAckDTO> ackMap = new ConcurrentHashMap<>();
 
+    private static Channel preNodeChannel = null;
+
     public static NameserverProperties getNameserverProperties() {
         return nameserverProperties;
     }
@@ -101,5 +103,13 @@ public class CommonCache {
 
     public static void setAckMap(Map<String, SlaveAckDTO> ackMap) {
         CommonCache.ackMap = ackMap;
+    }
+
+    public static Channel getPreNodeChannel() {
+        return preNodeChannel;
+    }
+
+    public static void setPreNodeChannel(Channel preNodeChannel) {
+        CommonCache.preNodeChannel = preNodeChannel;
     }
 }

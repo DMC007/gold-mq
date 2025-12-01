@@ -25,6 +25,7 @@ import org.gold.enums.ReplicationModeEnum;
 import org.gold.enums.ReplicationRoleEnum;
 import org.gold.event.EventBus;
 import org.gold.handler.MasterReplicationServerHandler;
+import org.gold.handler.NodeSendReplicationMsgServerHandler;
 import org.gold.handler.NodeWriteMsgReplicationServerHandler;
 import org.gold.handler.SlaveReplicationServerHandler;
 import org.gold.utils.AssertUtils;
@@ -97,7 +98,7 @@ public class ReplicationService {
         } else if (replicationRoleEnum == ReplicationRoleEnum.NODE) {
             String nextNodeAddress = nameserverProperties.getTraceReplicationProperties().getNextNode();
             startNettyServerAsync(new NodeWriteMsgReplicationServerHandler(new EventBus("node-write-msg-replication-task-")), replicationPort);
-            startNettyConnAsync(new SlaveReplicationServerHandler(new EventBus("node-send-replication-msg-task-")), nextNodeAddress);
+            startNettyConnAsync(new NodeSendReplicationMsgServerHandler(new EventBus("node-send-replication-msg-task-")), nextNodeAddress);
         } else if (replicationRoleEnum == ReplicationRoleEnum.TAIL_NODE) {
             startNettyServerAsync(new NodeWriteMsgReplicationServerHandler(new EventBus("node-write-msg-replication-task-")), replicationPort);
         }
