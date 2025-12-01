@@ -23,6 +23,10 @@ import org.gold.config.TraceReplicationProperties;
 import org.gold.constants.TcpConstants;
 import org.gold.enums.ReplicationModeEnum;
 import org.gold.enums.ReplicationRoleEnum;
+import org.gold.event.EventBus;
+import org.gold.handler.MasterReplicationServerHandler;
+import org.gold.handler.NodeWriteMsgReplicationServerHandler;
+import org.gold.handler.SlaveReplicationServerHandler;
 import org.gold.utils.AssertUtils;
 
 /**
@@ -84,6 +88,19 @@ public class ReplicationService {
         }
         int replicationPort = port;
         //是master角色，就开启netty进程同步数据给slave
+        if (replicationRoleEnum == ReplicationRoleEnum.MASTER) {
+            startNettyServerAsync(new MasterReplicationServerHandler(new EventBus("master-replication-task-")), replicationPort);
+        } else if (replicationRoleEnum == ReplicationRoleEnum.SLAVE) {
+            //slave主动链接master
+            String masterAddress = nameserverProperties.getMasterSlaveReplicationProperties().getMaster();
+            startNettyConnAsync(new SlaveReplicationServerHandler(new EventBus("slave-replication-task-")), masterAddress);
+        } else if (replicationRoleEnum == ReplicationRoleEnum.NODE) {
+            String nextNodeAddress = nameserverProperties.getTraceReplicationProperties().getNextNode();
+            startNettyServerAsync(new NodeWriteMsgReplicationServerHandler(new EventBus("node-write-msg-replication-task-")), replicationPort);
+            startNettyConnAsync(new SlaveReplicationServerHandler(new EventBus("node-send-replication-msg-task-")), nextNodeAddress);
+        } else if (replicationRoleEnum == ReplicationRoleEnum.TAIL_NODE) {
+            startNettyServerAsync(new NodeWriteMsgReplicationServerHandler(new EventBus("node-write-msg-replication-task-")), replicationPort);
+        }
     }
 
     public void startNettyConnAsync(SimpleChannelInboundHandler<TcpMsg> simpleChannelInboundHandler, String address) {

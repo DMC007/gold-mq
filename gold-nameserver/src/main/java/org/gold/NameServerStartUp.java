@@ -1,10 +1,12 @@
 package org.gold;
 
+import io.netty.util.internal.StringUtil;
 import org.gold.cache.CommonCache;
 import org.gold.core.InValidServiceRemoveTask;
 import org.gold.core.NameServerStarter;
 import org.gold.enums.ReplicationModeEnum;
-import org.gold.replication.ReplicationService;
+import org.gold.enums.ReplicationRoleEnum;
+import org.gold.replication.*;
 
 import java.io.IOException;
 
@@ -16,6 +18,7 @@ public class NameServerStartUp {
 
     private static NameServerStarter nameServerStarter;
     private static ReplicationService replicationService = new ReplicationService();
+
     public static void main(String[] args) throws IOException, InterruptedException {
         CommonCache.getPropertiesLoader().loadProperties();
         //获取到了集群复制的配置属性
@@ -33,6 +36,26 @@ public class NameServerStartUp {
         ReplicationModeEnum replicationModeEnum = replicationService.checkProperties();
         //这里面会根据同步模式开启不同的netty进程
         replicationService.startReplicationTask(replicationModeEnum);
+        ReplicationTask replicationTask = null;
+        //开启定时任务
+        if (replicationModeEnum == ReplicationModeEnum.MASTER_SLAVE) {
+            ReplicationRoleEnum roleEnum = ReplicationRoleEnum.getByCode(CommonCache.getNameserverProperties().getMasterSlaveReplicationProperties().getRole());
+            if (roleEnum == ReplicationRoleEnum.MASTER) {
+                replicationTask = new MasterReplicationMsgSendTask("master-replication-msg-send-task");
+                replicationTask.startTaskAsync();
+            } else if (roleEnum == ReplicationRoleEnum.SLAVE) {
+                replicationTask = new SlaveReplicationHeartBeatTask("slave-replication-heart-beat-send-task");
+                replicationTask.startTaskAsync();
+            }
+        } else if (replicationModeEnum == ReplicationModeEnum.TRACE) {
+            //判断当前节点是不是尾部节点，不是则开启一个复制数据的异步任务
+            String nextNode = CommonCache.getNameserverProperties().getTraceReplicationProperties().getNextNode();
+            if (!StringUtil.isNullOrEmpty(nextNode)) {
+                replicationTask = new NodeReplicationSendMsgTask("node-replication-msg-send-task");
+                replicationTask.startTaskAsync();
+            }
+        }
+        CommonCache.setReplicationTask(replicationTask);
     }
 
     private static void initInvalidServerRemoveTask() {

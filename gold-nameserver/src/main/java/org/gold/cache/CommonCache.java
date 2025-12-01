@@ -3,6 +3,7 @@ package org.gold.cache;
 import io.netty.channel.Channel;
 import org.gold.config.NameserverProperties;
 import org.gold.config.PropertiesLoader;
+import org.gold.replication.ReplicationTask;
 import org.gold.store.ServiceInstanceManager;
 
 /**
@@ -16,6 +17,7 @@ public class CommonCache {
     private static NameserverProperties nameserverProperties = new NameserverProperties();
     private static ServiceInstanceManager serviceInstanceManager = new ServiceInstanceManager();
     private static Channel connectNodeChannel = null;
+    private static ReplicationTask replicationTask;
 
     public static NameserverProperties getNameserverProperties() {
         return nameserverProperties;
@@ -47,5 +49,13 @@ public class CommonCache {
 
     public static void setConnectNodeChannel(Channel connectNodeChannel) {
         CommonCache.connectNodeChannel = connectNodeChannel;
+    }
+
+    public static ReplicationTask getReplicationTask() {
+        return replicationTask;
+    }
+
+    public static void setReplicationTask(ReplicationTask replicationTask) {
+        CommonCache.replicationTask = replicationTask;
     }
 }
