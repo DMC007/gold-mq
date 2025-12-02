@@ -1,5 +1,6 @@
 package org.gold.store;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,5 +40,12 @@ public class ServiceInstanceManager {
 
     public Map<String, ServiceInstance> getServiceInstanceMap() {
         return serviceInstanceMap;
+    }
+
+    public void reload(List<ServiceInstance> serviceInstanceList) {
+        serviceInstanceMap.clear();
+        for (ServiceInstance serviceInstance : serviceInstanceList) {
+            this.put(serviceInstance);
+        }
     }
 }
