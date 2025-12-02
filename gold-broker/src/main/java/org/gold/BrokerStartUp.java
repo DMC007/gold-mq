@@ -41,7 +41,15 @@ public class BrokerStartUp {
     public static void main(String[] args) throws IOException, InterruptedException {
         initProperties();
         initNameServerClient();
+        initReBalanceJob();
         initBrokerServer();
+    }
+
+    /**
+     * 开启重平衡任务
+     */
+    private static void initReBalanceJob() {
+        CommonCache.getConsumerInstancePool().startReBalanceJob();
     }
 
     /**
